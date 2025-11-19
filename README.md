@@ -10,7 +10,7 @@ Production URL (after deployment): https://bill.thuanle.me
 ## Team N8 Members
 | Student ID | Full Name            | Role                        
 |------------|----------------------|-----------------------------|
-| 2313624    | Trần Đỗ Cao Trí      | Leader                      |
+| 2313624    | Trần Đỗ Cao Trí      |                             |
 | 2352708    | Đinh Cao Thiên Lộc   |                             | 
 | 2311883    | Nguyễn Thị Kim Loan  |                             |
 | 2052xxxx   | Lê Văn C             |                             |
