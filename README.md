@@ -15,7 +15,7 @@ Production URL (after deployment): https://bill.thuanle.me
 | 2311883    | Nguyễn Thị Kim Loan  |                             |
 | 2352918    | Nguyễn Lê Đức Phú    |                             |
 | 2352770    | Trần Hà My           |                             |
-| 2052xxxx   | Phạm Thị D           |                             |
+| 2153485    | Nguyễn Quang Khởi    |                             |
 | 2052xxxx   | Phạm Thị D           |                             |
 
 ## Core Features
