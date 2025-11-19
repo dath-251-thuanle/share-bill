@@ -13,7 +13,7 @@ Production URL (after deployment): https://bill.thuanle.me
 | 2313624    | Trần Đỗ Cao Trí      |                             |
 | 2352708    | Đinh Cao Thiên Lộc   |                             | 
 | 2311883    | Nguyễn Thị Kim Loan  |                             |
-| 2052xxxx   | Lê Văn C             |                             |
+| 2352918    | Nguyễn Lê Đức Phú    |                             |
 | 2052xxxx   | Phạm Thị D           |                             |
 | 2052xxxx   | Phạm Thị D           |                             |
 | 2052xxxx   | Phạm Thị D           |                             |
