@@ -45,12 +45,12 @@ Production URL (after deployment): https://bill.thuanle.me
 ## Project Structure
 ├───.github
 │   └───workflows
-├───docs            # All specifications are stored in here
+├───docs            
+├───logs
+├───reports         # All specifications are stored in here
 │   ├───M1
 │   ├───M2
 │   └───M3
-├───logs
-├───reports
 ├───scripts
 ├───src             # Backend and Frontend code are implemented
 └───uploads
