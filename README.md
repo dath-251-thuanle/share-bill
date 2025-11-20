@@ -16,7 +16,7 @@ Production URL (after deployment): https://bill.thuanle.me
 | 2352918    | Nguyễn Lê Đức Phú    |                             |
 | 2352770    | Trần Hà My           |                             |
 | 2153485    | Nguyễn Quang Khởi    |                             |
-| 2052xxxx   | Phạm Thị D           |                             |
+| 2311987    | Nguyễn Song Minh Luân|                             |
 
 ## Core Features
 1. Create Event → auto-generated URL `/event/:eventId`
