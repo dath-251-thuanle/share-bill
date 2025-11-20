@@ -1,0 +1,3012 @@
+openapi: 3.0.3
+info:
+  title: Event Expense Summary API
+  version: 1.0.0
+
+paths:
+  /events/{eventId}/summary:
+    get:
+      summary: Get comprehensive expense summary with balance calculations
+      description: Get comprehensive expense summary for an event, including participant balances and settlement plan.
+      operationId: getEventSummary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+        - name: generateQRCodes
+          in: query
+          required: false
+          description: Auto-generate QR codes
+          schema:
+            type: boolean
+            default: true
+        - name: qrType
+          in: query
+          required: false
+          description: QR code standard
+          schema:
+            type: string
+            default: vietqr
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSummaryResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      event:
+                        id: evt_9k3m5n
+                        name: "Đà Lạt Trip 2025"
+                        totalExpenses: 15450000
+                        averagePerPerson: 3090000
+                        totalParticipants: 5
+                        currency: VND
+                        status: active
+                      summary:
+                        totalPaidByAll: 15450000
+                        collector:
+                          id: usr_7x9k2m
+                          name: Nguyen Van A
+                          bankInfo:
+                            bankName: Vietcombank
+                            accountNumber: "****6789"
+                            accountName: NGUYEN VAN A
+                      participants:
+                        - id: usr_7x9k2m
+                          name: Nguyen Van A
+                          avatar: "https://cdn.bill.thuanle.me/avatars/usr_7x9k2m.jpg"
+                          totalPaid: 8000000
+                          totalBenefit: 3090000
+                          balance: 4910000
+                          balanceType: credit
+                          qrCodeUrl: "https://img.vietqr.io/image/970415-0123456789-compact2.png?amount=4910000&addInfo=Dalat%20trip%20-%20Nguyen%20Van%20A%20settlement"
+                          settlementInfo:
+                            action: receive
+                            description: "You will receive 4,910,000 VND from other participants"
+                        - id: usr_8b9c2d
+                          name: Tran Van C
+                          avatar: null
+                          totalPaid: 2000000
+                          totalBenefit: 3090000
+                          balance: -1090000
+                          balanceType: debit
+                          qrCodeUrl: "https://img.vietqr.io/image/970415-0123456789-compact2.png?amount=1090000&addInfo=Dalat%20trip%20-%20Tran%20Van%20C%20payment"
+                          settlementInfo:
+                            action: pay
+                            description: "Please pay 1,090,000 VND to collector (Nguyen Van A)"
+                        - id: usr_9c3d4e
+                          name: Le Thi D
+                          avatar: null
+                          totalPaid: 0
+                          totalBenefit: 3090000
+                          balance: -3090000
+                          balanceType: debit
+                          qrCodeUrl: null
+                          settlementInfo:
+                            action: pay
+                            description: "Please pay 3,090,000 VND to collector"
+                          missingBankInfo: true
+                      settlementPlan:
+                        - from:
+                            id: usr_8b9c2d
+                            name: Tran Van C
+                          to:
+                            id: usr_7x9k2m
+                            name: Nguyen Van A
+                          amount: 1090000
+                          qrCodeUrl: "https://img.vietqr.io/image/970415-0123456789-compact2.png?amount=1090000"
+                        - from:
+                            id: usr_9c3d4e
+                            name: Le Thi D
+                          to:
+                            id: usr_7x9k2m
+                            name: Nguyen Van A
+                          amount: 3090000
+                          qrCodeUrl: null
+                      missingBankDetails:
+                        - participantId: usr_9c3d4e
+                          name: Le Thi D
+                      qrCodesGeneratedCount: 4
+                      totalQRCodesNeeded: 5
+                    meta:
+                      generatedAt: "2025-11-18T22:00:00+07:00"
+                      warning: "1 participant is missing bank details"
+                      calculationMethod: weighted_split
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid query
+                code: INVALID_QUERY
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Authentication required
+                code: AUTH_REQUIRED
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "You don't have permission to access this resource"
+                code: FORBIDDEN
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Resource not found
+                code: NOT_FOUND
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Rate limit exceeded
+                retryAfter: 60
+                code: RATE_LIMIT_EXCEEDED
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Internal server error
+                code: INTERNAL_ERROR
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    EventSummaryResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/EventSummaryData'
+        meta:
+          $ref: '#/components/schemas/EventSummaryMeta'
+      required:
+        - data
+        - meta
+
+    EventSummaryData:
+      type: object
+      properties:
+        event:
+          $ref: '#/components/schemas/EventInfo'
+        summary:
+          $ref: '#/components/schemas/SummaryInfo'
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+        settlementPlan:
+          type: array
+          items:
+            $ref: '#/components/schemas/SettlementPlanItem'
+        missingBankDetails:
+          type: array
+          items:
+            $ref: '#/components/schemas/MissingBankDetail'
+        qrCodesGeneratedCount:
+          type: integer
+        totalQRCodesNeeded:
+          type: integer
+      required:
+        - event
+        - summary
+        - participants
+        - settlementPlan
+        - qrCodesGeneratedCount
+        - totalQRCodesNeeded
+
+    EventSummaryMeta:
+      type: object
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        warning:
+          type: string
+          nullable: true
+        calculationMethod:
+          type: string
+      required:
+        - generatedAt
+        - calculationMethod
+
+    EventInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        totalExpenses:
+          type: integer
+        averagePerPerson:
+          type: integer
+        totalParticipants:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+      required:
+        - id
+        - name
+        - totalExpenses
+        - averagePerPerson
+        - totalParticipants
+        - currency
+        - status
+
+    SummaryInfo:
+      type: object
+      properties:
+        totalPaidByAll:
+          type: integer
+        collector:
+          $ref: '#/components/schemas/Collector'
+      required:
+        - totalPaidByAll
+        - collector
+
+    Collector:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        bankInfo:
+          $ref: '#/components/schemas/BankInfo'
+      required:
+        - id
+        - name
+        - bankInfo
+
+    BankInfo:
+      type: object
+      properties:
+        bankName:
+          type: string
+        accountNumber:
+          type: string
+        accountName:
+          type: string
+      required:
+        - bankName
+        - accountNumber
+        - accountName
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+        totalPaid:
+          type: integer
+        totalBenefit:
+          type: integer
+        balance:
+          type: integer
+        balanceType:
+          type: string
+          enum: [credit, debit]
+        qrCodeUrl:
+          type: string
+          format: uri
+          nullable: true
+        settlementInfo:
+          $ref: '#/components/schemas/SettlementInfo'
+        missingBankInfo:
+          type: boolean
+          nullable: true
+      required:
+        - id
+        - name
+        - totalPaid
+        - totalBenefit
+        - balance
+        - balanceType
+        - settlementInfo
+
+    SettlementInfo:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [pay, receive]
+        description:
+          type: string
+      required:
+        - action
+        - description
+
+    SettlementParty:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+        - id
+        - name
+
+    SettlementPlanItem:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/SettlementParty'
+        to:
+          $ref: '#/components/schemas/SettlementParty'
+        amount:
+          type: integer
+        qrCodeUrl:
+          type: string
+          format: uri
+          nullable: true
+      required:
+        - from
+        - to
+        - amount
+
+    MissingBankDetail:
+      type: object
+      properties:
+        participantId:
+          type: string
+        name:
+          type: string
+      required:
+        - participantId
+        - name
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        retryAfter:
+          type: integer
+          description: Seconds after which the client can retry (only for rate limit errors)
+      required:
+        - error
+        - code
+
+
+
+paths:
+  /events/{eventId}/generate-qrcodes:
+    post:
+      summary: Generate VietQR payment codes for participants
+      description: Generate VietQR payment codes for participants in the event.
+      operationId: generateEventQRCodes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateQRCodesRequest'
+            examples:
+              sample:
+                value:
+                  participantIds:
+                    - usr_8b9c2d
+                    - usr_9c3d4e
+                  qrType: vietqr
+                  forceRegenerate: false
+      responses:
+        '200':
+          description: QR codes generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateQRCodesResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      generated:
+                        - participantId: usr_8b9c2d
+                          participantName: Tran Van C
+                          balance: -1090000
+                          qrCodeUrl: "https://img.vietqr.io/image/970416-9876543210-compact2.png?amount=1090000&addInfo=Dalat%20trip%20-%20Tran%20Van%20C%20payment"
+                          qrCodeData:
+                            bankBin: "970416"
+                            accountNumber: "9876543210"
+                            accountName: "TRAN VAN C"
+                            amount: 1090000
+                            description: "Dalat trip - Tran Van C payment"
+                            template: compact2
+                          paymentTo:
+                            id: usr_7x9k2m
+                            name: "Nguyen Van A (Collector)"
+                      failed:
+                        - participantId: usr_9c3d4e
+                          participantName: Le Thi D
+                          reason: Missing bank account information
+                    meta:
+                      successCount: 1
+                      failedCount: 1
+                      totalRequested: 2
+                      generatedAt: "2025-11-18T22:15:00+07:00"
+
+        '400':
+          description: Bad request - Missing bank details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingBankInfo:
+                  value:
+                    error: "Cannot generate QR codes for participants without bank info"
+                    code: MISSING_BANK_INFO
+                    details:
+                      missingParticipants:
+                        - usr_9c3d4e
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Authentication required
+                code: AUTH_REQUIRED
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "You don't have permission to access this resource"
+                code: FORBIDDEN
+
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Resource not found
+                code: NOT_FOUND
+
+        '409':
+          description: QR already generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "QR already generated"
+                code: QR_ALREADY_GENERATED
+
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Rate limit exceeded
+                retryAfter: 60
+                code: RATE_LIMIT_EXCEEDED
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Internal server error
+                code: INTERNAL_ERROR
+
+        '503':
+          description: QR code generation service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                qrServiceUnavailable:
+                  value:
+                    error: "QR code generation service temporarily unavailable"
+                    code: QR_SERVICE_UNAVAILABLE
+                    retryAfter: 60
+
+
+
+paths:
+  /events/{eventId}/participants/{participantId}/bank-info:
+    post:
+      summary: Update bank information for a participant
+      description: Update bank information for a participant in the event.
+      operationId: updateParticipantBankInfo
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: participantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBankInfoRequest'
+            examples:
+              sample:
+                value:
+                  bankName: "Vietcombank"
+                  accountNumber: "0123456789"
+                  accountName: "NGUYEN VAN A"
+      responses:
+        '200':
+          description: Bank information updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateBankInfoResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      participant:
+                        id: "usr_9c3d4e"
+                        name: "Le Thi D"
+                        bankInfo:
+                          bankName: "Vietcombank"
+                          accountNumber: "****6789"
+                          accountName: "LE THI D"
+                        hasBankInfo: true
+                        qrCodeGenerated: true
+                        updatedAt: "2025-11-18T22:20:00+07:00"
+                    meta:
+                      message: "Bank information updated successfully"
+                      qrCodeUrl: "https://img.vietqr.io/image/970415-0123456789-compact2.png?amount=3090000"
+        '400':
+          description: Invalid bank name or invalid account number
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidBank:
+                  value:
+                    error: "Bank not supported"
+                    code: "INVALID_BANK"
+                    details:
+                      providedBank: "Unknown Bank"
+                      supportedBanks:
+                        - "Vietcombank"
+                        - "Techcombank"
+                        - "..."
+                invalidAccountNumber:
+                  value:
+                    error: "Invalid account number format"
+                    code: "INVALID_ACCOUNT_NUMBER"
+                    details:
+                      requirement: "Must be 8-16 digits"
+        '422':
+          description: Format violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                formatViolation:
+                  value:
+                    error: "Invalid data format"
+                    code: "FORMAT_VIOLATION"
+                    details:
+                      fields:
+                        accountName:
+                          message: "Account name must be UPPERCASE Vietnamese"
+                          example: "NGUYEN VAN A"
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+                code: "AUTH_REQUIRED"
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "You don't have permission to access this resource"
+                code: "FORBIDDEN"
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Resource not found"
+                code: "NOT_FOUND"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/stats:
+    get:
+      summary: Get statistical data for charts and visualization
+      description: Get statistical data for an event, including tables and chart-ready datasets.
+      operationId: getEventStats
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+        - name: currency
+          in: query
+          required: false
+          description: Currency unit
+          schema:
+            type: string
+            default: VND
+        - name: groupBy
+          in: query
+          required: false
+          description: Group: participant, category, date
+          schema:
+            type: string
+            enum: [participant, category, date]
+            default: participant
+      responses:
+        '200':
+          description: Stats data generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventStatsResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      event:
+                        id: evt_9k3m5n
+                        name: "Đà Lạt Trip 2025"
+                        totalExpenses: 15450000
+                        participantsCount: 5
+                        transactionsCount: 25
+                        currency: VND
+                      summaryTable:
+                        - participantId: usr_7x9k2m
+                          name: Nguyen Van A
+                          totalPaid: 8000000
+                          fairShare: 3090000
+                          difference: 4910000
+                          percentagePaid: 51.8
+                        - participantId: usr_8b9c2d
+                          name: Tran Van C
+                          totalPaid: 2000000
+                          fairShare: 3090000
+                          difference: -1090000
+                          percentagePaid: 12.9
+                      chartData:
+                        pieChart:
+                          title: "Expense Distribution by Participant"
+                          labels: ["Nguyen Van A", "Tran Van C", "Le Thi D", "Others"]
+                          datasets:
+                            - label: "Amount Paid"
+                              data: [8000000, 2000000, 0, 5450000]
+                              colors: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0"]
+                        barChart:
+                          title: "Balance Difference"
+                          labels: ["Nguyen Van A", "Tran Van C", "Le Thi D", "Pham Van E", "Hoang Thi F"]
+                          datasets:
+                            - label: "Difference (VND)"
+                              data: [4910000, -1090000, -3090000, 150000, -880000]
+                              colors: ["#4CAF50", "#F44336", "#F44336", "#4CAF50", "#F44336"]
+                        categoryBreakdown:
+                          labels: ["Food", "Accommodation", "Transport", "Entertainment"]
+                          datasets:
+                            - label: "Amount (VND)"
+                              data: [5500000, 4000000, 3200000, 2750000]
+                        timeline:
+                          labels: ["2025-12-01", "2025-12-02", "2025-12-03"]
+                          datasets:
+                            - label: "Daily Expenses"
+                              data: [4500000, 6800000, 4150000]
+                            - label: "Cumulative"
+                              data: [4500000, 11300000, 15450000]
+                    meta:
+                      generatedAt: "2025-11-18T22:10:00+07:00"
+                      fairShareCalculation: equal
+
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid query
+                code: INVALID_QUERY
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Authentication required
+                code: AUTH_REQUIRED
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "You don't have permission to access this resource"
+                code: FORBIDDEN
+
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Resource not found
+                code: NOT_FOUND
+
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Rate limit exceeded
+                retryAfter: 60
+                code: RATE_LIMIT_EXCEEDED
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Internal server error
+                code: INTERNAL_ERROR
+
+
+paths:
+  /events/{eventId}/export/pdf:
+    get:
+      summary: Download event summary as PDF file
+      description: Download event summary as a structured PDF report.
+      operationId: downloadEventSummaryPDF
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+        - name: includeQRCodes
+          in: query
+          required: false
+          description: Include QR codes in PDF output
+          schema:
+            type: boolean
+            default: true
+        - name: includeTransactions
+          in: query
+          required: false
+          description: Include full transaction list
+          schema:
+            type: boolean
+            default: true
+        - name: language
+          in: query
+          required: false
+          description: Output language (vi or en)
+          schema:
+            type: string
+            enum: [vi, en]
+            default: vi
+      responses:
+        '200':
+          description: PDF file generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+              examples:
+                pdfExample:
+                  description: Binary PDF response
+                  value: "%PDF-BINARY%"
+        '503':
+          description: Export service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                exportUnavailable:
+                  value:
+                    error: "Export service temporarily unavailable"
+                    code: EXPORT_SERVICE_UNAVAILABLE
+                    retryAfter: 30
+                    details:
+                      message: "PDF/ZIP generator is currently overloaded. Please try again later."
+
+
+  /events/{eventId}/export/zip:
+    get:
+      summary: Download complete event package as ZIP
+      description: Download ZIP including PDF, JSON, QR codes, and receipts.
+      operationId: downloadEventSummaryZIP
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+        - name: includeJSON
+          in: query
+          required: false
+          description: Include summary.json in ZIP
+          schema:
+            type: boolean
+            default: true
+        - name: includeQRCodes
+          in: query
+          required: false
+          description: Include QR codes folder
+          schema:
+            type: boolean
+            default: true
+        - name: includeReceipts
+          in: query
+          required: false
+          description: Include receipt attachments
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: ZIP file generated successfully
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+              examples:
+                zipExample:
+                  description: Binary ZIP response
+                  value: "PK-ZIP-BINARY"
+        '503':
+          description: Export service temporarily unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                exportUnavailable:
+                  value:
+                    error: "Export service temporarily unavailable"
+                    code: EXPORT_SERVICE_UNAVAILABLE
+                    retryAfter: 30
+                    details:
+                      message: "PDF/ZIP generator is currently overloaded. Please try again later."
+
+
+paths:
+  /events/{eventId}/share:
+    post:
+      summary: Generate shareable summary link
+      description: Generate a shareable summary link for the event.
+      operationId: createEventShareLink
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event identifier
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShareLinkRequest'
+            examples:
+              sample:
+                value:
+                  expiresIn: 604800
+                  allowPublicAccess: false
+                  includePersonalBalances: true
+      responses:
+        '200':
+          description: Share link created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateShareLinkResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      shareUrl: "https://bill.thuanle.me/s/evt_9k3m5n_abc123xyz"
+                      shortUrl: "https://bill.me/s/abc123"
+                      qrCode: "https://cdn.bill.thuanle.me/share-qr/abc123xyz.png"
+                      expiresAt: "2025-11-25T23:00:00+07:00"
+                      allowPublicAccess: false
+                      viewCount: 0
+                    meta:
+                      message: "Share link created successfully"
+
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidBody:
+                  value:
+                    error: "Invalid request body"
+                    code: "INVALID_BODY"
+                    details:
+                      fields:
+                        expiresIn:
+                          message: "expiresIn exceeds maximum allowed value (30 days)"
+                          maxAllowed: 2592000
+
+        '403':
+          description: Only participants can create share links
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notParticipant:
+                  value:
+                    error: "Only participants can create share links"
+                    code: "NOT_PARTICIPANT"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+                code: "AUTH_REQUIRED"
+
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Resource not found"
+                code: "NOT_FOUND"
+
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Rate limit exceeded"
+                retryAfter: 60
+                code: "RATE_LIMIT_EXCEEDED"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+
+paths:
+  /events:
+    post:
+      summary: Create a new expense-sharing event
+      description: >
+        Create a new expense-sharing event and assign the current authenticated
+        user as the event owner. Only authenticated users can create events.
+      operationId: createEvent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+            examples:
+              sample:
+                value:
+                  name: "Da Lat Trip"
+                  currency: "VND"
+                  description: "Trip on Jan 2025"
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateEventResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "evt_12345"
+                      name: "Da Lat Trip"
+                      currency: "VND"
+                      ownerId: "usr_78910"
+                      description: "Trip on Jan 2025"
+                      createdAt: "2025-11-18T10:00:00Z"
+                    meta:
+                      message: "Event created successfully"
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validationError:
+                  value:
+                    error: "Validation error"
+                    code: "VALIDATION_ERROR"
+                    details:
+                      field: "name"
+                      issue: "Name is required"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+                code: "AUTH_REQUIRED"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}:
+    put:
+      summary: Update an existing event
+      description: Allows the event owner to update an existing event.
+      operationId: updateEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: ID of event
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateEventRequest'
+            examples:
+              sample:
+                value:
+                  name: "Da Lat Trip Updated"
+                  currency: "VND"
+                  description: "Updated notes"
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateEventResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "evt_12345"
+                      updatedFields: ["name", "description"]
+                    meta:
+                      message: "Event updated successfully"
+
+        '400':
+          description: Invalid event data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidUpdate:
+                  value:
+                    error: "Invalid event data. Please check your input."
+                    code: "EVENT_INVALID_UPDATE"
+
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to modify this event."
+                    code: "EVENT_MODIFY_FORBIDDEN"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                eventNotFound:
+                  value:
+                    error: "Event not found or may have been deleted."
+                    code: "EVENT_NOT_FOUND"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+                code: "AUTH_REQUIRED"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+    delete:
+      summary: Delete an existing event
+      description: Allows the event owner to delete an existing event.
+      operationId: deleteEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: ID of event
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteEventResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "evt_12345"
+                      deleted: true
+                    meta:
+                      message: "Event deleted successfully"
+
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to modify this event."
+                    code: "EVENT_MODIFY_FORBIDDEN"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                eventNotFound:
+                  value:
+                    error: "Event not found or may have been deleted."
+                    code: "EVENT_NOT_FOUND"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Authentication required"
+                code: "AUTH_REQUIRED"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/participants:
+    post:
+      summary: Add participant
+      description: Event owner adds a new participant to the event.
+      operationId: addParticipant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertParticipantRequest'
+            examples:
+              sample:
+                value:
+                  name: "Nguyen Van B"
+                  bankInfo:
+                    bankName: "Vietcombank"
+                    accountNumber: "0123456789"
+                    accountName: "NGUYEN VAN B"
+      responses:
+        '201':
+          description: Participant added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddParticipantResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "usr_999"
+                      eventId: "evt_12345"
+                      name: "Nguyen Van B"
+                    meta:
+                      message: "Participant added"
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to modify this event."
+                    code: "EVENT_MODIFY_FORBIDDEN"
+        '404':
+          description: Event or participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                participantNotFound:
+                  value:
+                    error: "Participant not found."
+                    code: "PARTICIPANT_NOT_FOUND"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+  /events/{eventId}/participants/{participantId}:
+    put:
+      summary: Update participant
+      description: Event owner updates an existing participant.
+      operationId: updateParticipant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+        - name: participantId
+          in: path
+          required: true
+          description: Participant ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertParticipantRequest'
+            examples:
+              sample:
+                value:
+                  name: "Nguyen Van B"
+                  bankInfo:
+                    bankName: "Vietcombank"
+                    accountNumber: "0123456789"
+                    accountName: "NGUYEN VAN B"
+      responses:
+        '200':
+          description: Participant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateParticipantResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "usr_999"
+                      updatedFields:
+                        - "bankInfo"
+                    meta:
+                      message: "Participant updated"
+        '400':
+          description: Invalid event data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidUpdate:
+                  value:
+                    error: "Invalid event data. Please check your input."
+                    code: "EVENT_INVALID_UPDATE"
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to modify this event."
+                    code: "EVENT_MODIFY_FORBIDDEN"
+        '404':
+          description: Participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                participantNotFound:
+                  value:
+                    error: "Participant not found."
+                    code: "PARTICIPANT_NOT_FOUND"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+    delete:
+      summary: Delete participant
+      description: Event owner deletes an existing participant.
+      operationId: deleteParticipant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+        - name: participantId
+          in: path
+          required: true
+          description: Participant ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Participant deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteParticipantResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "usr_999"
+                      deleted: true
+                    meta:
+                      message: "Participant deleted"
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to modify this event."
+                    code: "EVENT_MODIFY_FORBIDDEN"
+        '404':
+          description: Participant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                participantNotFound:
+                  value:
+                    error: "Participant not found."
+                    code: "PARTICIPANT_NOT_FOUND"
+        '409':
+          description: Participant has existing transactions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                deleteBlocked:
+                  value:
+                    error: "Cannot delete participant with existing transactions."
+                    code: "PARTICIPANT_DELETE_BLOCKED"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/collector:
+    put:
+      summary: Assign collector for the event
+      description: Event owner assigns one participant as the collector who receives payments.
+      operationId: assignCollector
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                participantId:
+                  type: string
+                  description: Participant must belong to the event and have bank info if auto QR is enabled.
+                enableAutoQR:
+                  type: boolean
+              required:
+                - participantId
+            examples:
+              sample:
+                value:
+                  participantId: "usr_123"
+                  enableAutoQR: true
+      responses:
+        '200':
+          description: Collector assigned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      eventId:
+                        type: string
+                      collectorId:
+                        type: string
+                    required:
+                      - eventId
+                      - collectorId
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                      - message
+                required:
+                  - data
+                  - meta
+              examples:
+                sample:
+                  value:
+                    data:
+                      eventId: "evt_12345"
+                      collectorId: "usr_123"
+                    meta:
+                      message: "Collector assigned"
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  value:
+                    error: "You do not have permission to assign collectors."
+                    code: "COLLECTOR_ASSIGN_FORBIDDEN"
+        '409':
+          description: Participant already assigned as collector
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                alreadyAssigned:
+                  value:
+                    error: "This participant is already assigned as the collector."
+                    code: "COLLECTOR_ALREADY_ASSIGNED"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/transactions:
+    post:
+      summary: Add transaction
+      description: Event owner adds a spending record to the event.
+      operationId: addTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                amount:
+                  type: number
+                paidBy:
+                  type: array
+                  items:
+                    type: string
+                beneficiaries:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      participantId:
+                        type: string
+                      weight:
+                        type: number
+                    required:
+                      - participantId
+                      - weight
+              required:
+                - title
+                - amount
+                - paidBy
+                - beneficiaries
+            examples:
+              sample:
+                value:
+                  title: "Lunch at BBQ"
+                  amount: 850000
+                  paidBy: ["usr_111", "usr_222"]
+                  beneficiaries:
+                    - participantId: "usr_111"
+                      weight: 1
+                    - participantId: "usr_222"
+                      weight: 1.5
+                    - participantId: "usr_333"
+                      weight: 1
+      responses:
+        '201':
+          description: Transaction added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      eventId:
+                        type: string
+                      created:
+                        type: boolean
+                    required:
+                      - id
+                      - eventId
+                      - created
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                      - message
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "txn_5678"
+                      eventId: "evt_12345"
+                      created: true
+                    meta:
+                      message: "Transaction added"
+
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You do not have permission to manage transactions."
+                    code: "COLLECTOR_ASSIGN_FORBIDDEN"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+  /events/{eventId}/transactions/{transactionId}:
+    put:
+      summary: Update transaction
+      description: Event owner updates an existing spending record.
+      operationId: updateTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                amount:
+                  type: number
+                paidBy:
+                  type: array
+                  items:
+                    type: string
+                beneficiaries:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      participantId:
+                        type: string
+                      weight:
+                        type: number
+            examples:
+              sample:
+                value:
+                  title: "Lunch at BBQ"
+                  amount: 900000
+                  paidBy: ["usr_111"]
+                  beneficiaries:
+                    - participantId: "usr_111"
+                      weight: 1
+      responses:
+        '200':
+          description: Transaction updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      updatedFields:
+                        type: array
+                        items:
+                          type: string
+                    required:
+                      - id
+                      - updatedFields
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                      - message
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "txn_5678"
+                      updatedFields: ["amount", "beneficiaries"]
+                    meta:
+                      message: "Transaction updated"
+
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You do not have permission to manage transactions."
+                    code: "COLLECTOR_ASSIGN_FORBIDDEN"
+
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "Transaction not found."
+                    code: "TRANSACTION_NOT_FOUND"
+
+        '409':
+          description: Cannot modify locked transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                locked:
+                  value:
+                    error: "Transactions cannot be modified after summary calculation."
+                    code: "TRANSACTION_LOCKED"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Internal server error"
+                code: "INTERNAL_ERROR"
+
+    delete:
+      summary: Delete transaction
+      description: Event owner deletes a spending record.
+      operationId: deleteTransaction
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      deleted:
+                        type: boolean
+                    required:
+                      - id
+                      - deleted
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                    required:
+                      - message
+              examples:
+                sample:
+                  value:
+                    data:
+                      id: "txn_5678"
+                      deleted: true
+                    meta:
+                      message: "Transaction deleted"
+
+        '403':
+          description: Not event owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You do not have permission to manage transactions."
+                    code: "COLLECTOR_ASSIGN_FORBIDDEN"
+
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "Transaction not found."
+                    code: "TRANSACTION_NOT_FOUND"
+
+        '409':
+          description: Locked transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                locked:
+                  value:
+                    error: "Tra
+
+
+paths:
+  /account/profile/:
+    put:
+      summary: Update personal information
+      description: Assign name, age, sex, bank information, avatar.
+      operationId: updateAccountProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                avatar:
+                  type: string
+                  format: uri
+                bankInfo:
+                  type: string
+                  description: >
+                    Bank name. Supported banks include Vietcombank, Techcombank,
+                    VPBank, BIDV, Agribank, ACB, Sacombank, MBBank, VietinBank,
+                    TPBank, HDBank, SHB, VIB, MSB, OCB, Eximbank, SeABank, etc.
+              required:
+                - name
+            examples:
+              sample:
+                value:
+                  name: "Dinh Cao Thien Loc"
+                  avatar: "https://cdn.bill.thuanle.me/avatars/usr_7x9k2m.jpg"
+                  bankInfo: "Vietcombank"
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      name:
+                        type: string
+                      avatar:
+                        type: string
+                        format: uri
+                      bankInfo:
+                        type: string
+                      updatedAt:
+                        type: string
+                        format: date-time
+                    required:
+                      - id
+                      - name
+                      - avatar
+                      - bankInfo
+                      - updatedAt
+                required:
+                  - success
+                  - message
+                  - data
+              examples:
+                sample:
+                  value:
+                    success: true
+                    message: "Profile updated successfully"
+                    data:
+                      id: "usr_7x9k2m"
+                      name: "Dinh Cao Thien Loc"
+                      avatar: "https://cdn.bill.thuanle.me/avatars/usr_7x9k2m.jpg"
+                      bankInfo: "Vietcombank"
+                      updatedAt: "2025-11-19T16:56:08+07:00"
+
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - message
+              examples:
+                invalid:
+                  value:
+                    success: false
+                    error: "INVALID_QUERY"
+                    message: "Query failed"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - message
+              examples:
+                unauthorized:
+                  value:
+                    success: false
+                    error: "AUTH_REQUIRED"
+                    message: "Authentication required"
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - message
+              examples:
+                forbidden:
+                  value:
+                    success: false
+                    error: "ACCESS_DENIED"
+                    message: "You don't have permission to access this resource"
+
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - message
+              examples:
+                notFound:
+                  value:
+                    success: false
+                    error: "NOT_FOUND"
+                    message: "User not found."
+
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  retryAfter:
+                    type: integer
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - retryAfter
+                  - message
+              examples:
+                rateLimited:
+                  value:
+                    success: false
+                    error: "RATE_LIMIT_EXCEEDED"
+                    retryAfter: 60
+                    message: "Rate limit exceeded"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                  message:
+                    type: string
+                required:
+                  - success
+                  - error
+                  - message
+              examples:
+                serverError:
+                  value:
+                    success: false
+                    error: "INTERNAL_SERVER_ERROR"
+                    message: "Internal server error"
+
+
+paths:
+  /events/{eventId}:
+    get:
+      summary: View event information
+      description: Get an overview information of an event.
+      operationId: getEventInformation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+
+      responses:
+        '200':
+          description: Event information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      event:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          description:
+                            type: string
+                          currency:
+                            type: string
+                          createdBy:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                              name:
+                                type: string
+                            required:
+                              - id
+                              - name
+                          status:
+                            type: string
+                          startDate:
+                            type: string
+                            format: date
+                          endDate:
+                            type: string
+                            format: date
+                          createdAt:
+                            type: string
+                            format: date-time
+                          updatedAt:
+                            type: string
+                            format: date-time
+                        required:
+                          - id
+                          - name
+                          - currency
+                          - createdBy
+                          - status
+                          - createdAt
+                          - updatedAt
+                      stats:
+                        type: object
+                        properties:
+                          totalParticipants:
+                            type: integer
+                          totalTransactions:
+                            type: integer
+                          totalExpenses:
+                            type: integer
+                          averagePerPerson:
+                            type: integer
+                        required:
+                          - totalParticipants
+                          - totalTransactions
+                          - totalExpenses
+                          - averagePerPerson
+                    required:
+                      - event
+                      - stats
+              examples:
+                sample:
+                  value:
+                    data:
+                      event:
+                        id: "evt_9k3m5n"
+                        name: "Da Lat Trip 2025"
+                        description: "3 days 2 nights trip with friends"
+                        currency: "VND"
+                        createdBy:
+                          id: "usr_owner_01"
+                          name: "Nguyen Van B"
+                        status: "active"
+                        startDate: "2025-02-01"
+                        endDate: "2025-02-03"
+                        createdAt: "2025-01-10T09:00:00+07:00"
+                        updatedAt: "2025-01-20T21:30:00+07:00"
+                      stats:
+                        totalParticipants: 5
+                        totalTransactions: 12
+                        totalExpenses: 15450000
+                        averagePerPerson: 3090000
+
+        '400':
+          description: Invalid eventId format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidEventId:
+                  value:
+                    error: "Invalid eventId format"
+                    code: "INVALID_EVENT_ID"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error: "Authentication required"
+                    code: "AUTH_REQUIRED"
+
+        '403':
+          description: User does not have permission to access the event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You don't have permission to access this event"
+                    code: "FORBIDDEN"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "Event not found"
+                    code: "EVENT_NOT_FOUND"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: "Internal server error"
+                    code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/participants:
+    get:
+      summary: Get event participants
+      description: Retrieve the full list of participants in a given event.
+      operationId: getEventParticipants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved participant list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      eventId:
+                        type: string
+                      participants:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            avatar:
+                              type: string
+                              format: uri
+                              nullable: true
+                            joinedAt:
+                              type: string
+                              format: date-time
+                            bankInfo:
+                              type: object
+                              nullable: true
+                              properties:
+                                bankName:
+                                  type: string
+                                accountNumber:
+                                  type: string
+                                accountName:
+                                  type: string
+                              required:
+                                - bankName
+                                - accountNumber
+                                - accountName
+                          required:
+                            - id
+                            - name
+                            - joinedAt
+                    required:
+                      - eventId
+                      - participants
+              examples:
+                sample:
+                  value:
+                    data:
+                      eventId: "evt_9k3m5n"
+                      participants:
+                        - id: "usr_7x9k2m"
+                          name: "Nguyen Van A"
+                          avatar: "https://cdn.bill.me/avatars/usr_7x9k2m.jpg"
+                          joinedAt: "2025-11-01T10:00:00+07:00"
+                          bankInfo:
+                            bankName: "Vietcombank"
+                            accountNumber: "****6789"
+                            accountName: "NGUYEN VAN A"
+                        - id: "usr_8b9c2d"
+                          name: "Tran Van C"
+                          avatar: null
+                          joinedAt: "2025-11-02T12:00:00+07:00"
+                          bankInfo: null
+                        - id: "usr_9c3d4e"
+                          name: "Le Thi D"
+                          avatar: null
+                          joinedAt: "2025-11-03T09:30:00+07:00"
+                          bankInfo:
+                            bankName: "MBBank"
+                            accountNumber: "****1122"
+                            accountName: "LE THI D"
+
+        '400':
+          description: Invalid eventId format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidEventId:
+                  value:
+                    error: "Invalid eventId format"
+                    code: "INVALID_EVENT_ID"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error: "Authentication required"
+                    code: "AUTH_REQUIRED"
+
+        '403':
+          description: Forbidden — user not allowed to view participants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You don't have permission to view participants"
+                    code: "FORBIDDEN"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "Event not found"
+                    code: "EVENT_NOT_FOUND"
+
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: "Internal server error"
+                    code: "INTERNAL_ERROR"
+
+
+
+paths:
+  /events/{eventId}/join:
+    post:
+      summary: Join event
+      description: Add a new participant to the event using a shared link.
+      operationId: joinEvent
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                avatar:
+                  type: string
+                  format: uri
+                  nullable: true
+                bankInfo:
+                  type: object
+                  nullable: true
+                  properties:
+                    bankName:
+                      type: string
+                    accountNumber:
+                      type: string
+                      description: Digits only, no spaces
+                    accountName:
+                      type: string
+                  additionalProperties: false
+            examples:
+              sample:
+                value:
+                  name: "Nguyen Van A"
+                  avatar: "https://cdn.bill.me/avatarA.jpg"
+                  bankInfo:
+                    bankName: "Vietcombank"
+                    accountNumber: "0123456789"
+                    accountName: "NGUYEN VAN A"
+      responses:
+        '201':
+          description: New participant joined the event
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      participant:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          avatar:
+                            type: string
+                            format: uri
+                            nullable: true
+                          bankInfo:
+                            type: object
+                            nullable: true
+                            properties:
+                              bankName:
+                                type: string
+                              accountNumber:
+                                type: string
+                              accountName:
+                                type: string
+                            required:
+                              - bankName
+                              - accountNumber
+                              - accountName
+                        required:
+                          - id
+                          - name
+                  # meta is not present in example, so omitted
+              examples:
+                created:
+                  value:
+                    data:
+                      participant:
+                        id: "usr_7x9k2m"
+                        name: "Nguyen Van A"
+                        avatar: "https://cdn.bill.me/avatarA.jpg"
+                        bankInfo:
+                          bankName: "Vietcombank"
+                          accountNumber: "****6789"
+                          accountName: "NGUYEN VAN A"
+
+        '200':
+          description: Participant already in event (idempotent join)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      participant:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                          avatar:
+                            type: string
+                            format: uri
+                            nullable: true
+                          bankInfo:
+                            type: object
+                            nullable: true
+                            properties:
+                              bankName:
+                                type: string
+                              accountNumber:
+                                type: string
+                              accountName:
+                                type: string
+                            required:
+                              - bankName
+                              - accountNumber
+                              - accountName
+                        required:
+                          - id
+                          - name
+              examples:
+                alreadyJoined:
+                  value:
+                    data:
+                      participant:
+                        id: "usr_7x9k2m"
+                        name: "Nguyen Van A"
+                        avatar: "https://cdn.bill.me/avatarA.jpg"
+                        bankInfo:
+                          bankName: "Vietcombank"
+                          accountNumber: "****6789"
+                          accountName: "NGUYEN VAN A"
+
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - code
+              examples:
+                invalidBody:
+                  value:
+                    error: "Invalid request body"
+                    code: "INVALID_BODY"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - code
+              examples:
+                eventNotFound:
+                  value:
+                    error: "Event not found"
+                    code: "EVENT_NOT_FOUND"
+
+        '409':
+          description: Duplicate participant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - code
+              examples:
+                duplicateParticipant:
+                  value:
+                    error: "Participant name already exists in event"
+                    code: "DUPLICATE_PARTICIPANT"
+
+        '500':
+          description: Unable to join event
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                required:
+                  - error
+                  - code
+              examples:
+                internalError:
+                  value:
+                    error: "Unable to join event"
+                    code: "INTERNAL_ERROR"
+
+
+paths:
+  /events/{eventId}/summary:
+    get:
+      summary: View money distribution summary
+      description: Get the full settlement summary of the event, including balances, settlement plan, and optional QR codes.
+      operationId: getEventMoneyDistributionSummary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: string
+        - name: generateQRCodes
+          in: query
+          required: false
+          description: Automatically generate QR codes
+          schema:
+            type: boolean
+            default: true
+        - name: qrType
+          in: query
+          required: false
+          description: QR code standard
+          schema:
+            type: string
+            default: vietqr
+        - name: includeSettlementPlan
+          in: query
+          required: false
+          description: Include “who pays whom” settlement plan
+          schema:
+            type: boolean
+            default: true
+        - name: maskBankInfo
+          in: query
+          required: false
+          description: Mask bank account numbers in responses
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Summary loaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventSummaryResponse'
+              examples:
+                sample:
+                  value:
+                    data:
+                      event:
+                        id: "evt_9k3m5n"
+                        name: "Da Lat Trip 2025"
+                        totalExpenses: 15450000
+                        averagePerPerson: 3090000
+                        totalParticipants: 5
+                        currency: "VND"
+                        status: "active"
+                      summary:
+                        totalPaidByAll: 15450000
+                        collector:
+                          id: "usr_7x9k2m"
+                          name: "Nguyen Van A"
+                          bankInfo:
+                            bankName: "Vietcombank"
+                            accountNumber: "****6789"
+                            accountName: "NGUYEN VAN A"
+                      participants: [...]
+                      settlementPlan: [...]
+                      missingBankDetails: [...]
+                      qrCodesGeneratedCount: 4
+                      totalQRCodesNeeded: 5
+                    meta:
+                      generatedAt: "2025-11-18T22:00:00+07:00"
+                      warning: "1 participant is missing bank details"
+                      calculationMethod: "weighted_split"
+
+        '400':
+          description: Invalid query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidQuery:
+                  value:
+                    error: "Invalid query"
+                    code: "INVALID_QUERY"
+
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unauthorized:
+                  value:
+                    error: "Authentication required"
+                    code: "AUTH_REQUIRED"
+
+        '403':
+          description: Forbidden access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                forbidden:
+                  value:
+                    error: "You don't have permission to access this summary"
+                    code: "FORBIDDEN"
+
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notFound:
+                  value:
+                    error: "Event not found"
+                    code: "NOT_FOUND"
+
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rateLimited:
+                  value:
+                    error: "Rate limit exceeded"
+                    retryAfter: 60
+                    code: "RATE_LIMIT_EXCEEDED"
+
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  value:
+                    error: "Internal server error"
+                    code: "INTERNAL_ERROR"
+
+      description: |
+        Get settlement summary of the event.
+
+        **Status Codes**
+        | Code | Meaning |
+        |------|---------|
+        | 200  | Summary loaded successfully |
+        | 400  | Invalid query |
+        | 401  | Authentication required |
+        | 403  | Forbidden access |
+        | 404  | Event not found |
+        | 429  | Too many requests |
+        | 500  | Server error |
+
+
