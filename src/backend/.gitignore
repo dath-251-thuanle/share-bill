@@ -1,0 +1,46 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+main
+
+# Test binary
+*.test
+*.out
+/coverage.html
+
+# Go workspace file
+go.work
+
+# Environment files
+*.env
+!example.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Temporary files
+/tmp/
+*.tmp
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
