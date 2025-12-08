@@ -37,7 +37,7 @@
 
 - Chạy server (mỗi lần code)
    ``` bash
-   cd D:\University\semester5\DACNPM\dath\share-bill\src\backend
-   go run cmd/api/main.go
+   cd D:\University\semester5\DACNPM\dath\share-bill\src\backend\cmd\api
+   go run main.go
 
 - Server sẽ chạy tại: http://localhost:3000
