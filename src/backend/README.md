@@ -11,19 +11,19 @@
    cd D:\University\semester5\DACNPM\dath\share-bill\src\backend
 
 2. **Tạo database trong PostgreSQL**
-Mở pgAdmin / DBeaver / psql rồi chạy:
-SQLCREATE DATABASE dath2;   -- bạn có thể đổi tên nếu muốn
+- Mở pgAdmin / DBeaver / psql rồi chạy:
+- SQLCREATE DATABASE dath2;   -- bạn có thể đổi tên nếu muốn
 3. **Tạo bảng**
-Mở Query Tool → chạy toàn bộ nội dung file database_create.sql (file này nằm trong thư mục /src/backend)
+- Mở Query Tool → chạy toàn bộ nội dung file database_create.sql (file này nằm trong thư mục /src/backend)
 4. **Tạo file .env**
-Tạo file tên .env ngay tại thư mục src/backend/ với nội dung sau:
+- Tạo file tên .env ngay tại thư mục src/backend/ với nội dung sau:
    --- bash
    envDATABASE_URL=postgres://caotri136:Caotri1306asdfg**@localhost:5432/dath2?sslmode=disable
    APP_PORT=3000
    JWT_SECRET=sharebill-dath2-caotri136-2025-super-secret-key-1306
-Lưu ý:
-Thay caotri136 và Caotri1306asdfg** bằng username + password PostgreSQL thật của bạn
-Thay dath2 bằng tên database bạn vừa tạo ở bước 2
+- Lưu ý:
++ Thay caotri136 và Caotri1306asdfg** bằng username + password PostgreSQL thật của bạn
++ Thay dath2 bằng tên database bạn vừa tạo ở bước 2
 
 6. **Cài dependencies (chỉ chạy 1 lần)**
    --- bash
@@ -35,9 +35,9 @@ Thay dath2 bằng tên database bạn vừa tạo ở bước 2
    go get github.com/golang-jwt/jwt/v5
    go get github.com/go-playground/validator/v10
 
-Chạy server (mỗi lần code)
+- Chạy server (mỗi lần code)
    --- bash
    cd D:\University\semester5\DACNPM\dath\share-bill\src\backend
    go run cmd/api/main.go
 
-Server sẽ chạy tại: http://localhost:3000
+- Server sẽ chạy tại: http://localhost:3000
