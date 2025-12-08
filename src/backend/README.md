@@ -17,24 +17,27 @@ SQLCREATE DATABASE dath2;   -- bạn có thể đổi tên nếu muốn
 Mở Query Tool → chạy toàn bộ nội dung file database_create.sql (file này nằm trong thư mục /src/backend)
 4. **Tạo file .env**
 Tạo file tên .env ngay tại thư mục src/backend/ với nội dung sau:
-envDATABASE_URL=postgres://caotri136:Caotri1306asdfg**@localhost:5432/dath2?sslmode=disable
-APP_PORT=3000
-JWT_SECRET=sharebill-dath2-caotri136-2025-super-secret-key-1306
+   --- bash
+   envDATABASE_URL=postgres://caotri136:Caotri1306asdfg**@localhost:5432/dath2?sslmode=disable
+   APP_PORT=3000
+   JWT_SECRET=sharebill-dath2-caotri136-2025-super-secret-key-1306
 Lưu ý:
 Thay caotri136 và Caotri1306asdfg** bằng username + password PostgreSQL thật của bạn
 Thay dath2 bằng tên database bạn vừa tạo ở bước 2
 
-5. **Cài dependencies (chỉ chạy 1 lần)**
-go mod init sharebill-backend        # nếu chưa có go.mod
-go get github.com/gofiber/fiber/v2
-go get github.com/jackc/pgx/v5/pgxpool
-go get github.com/joho/godotenv
-go get golang.org/x/crypto/bcrypt
-go get github.com/golang-jwt/jwt/v5
-go get github.com/go-playground/validator/v10
+6. **Cài dependencies (chỉ chạy 1 lần)**
+   --- bash
+   go mod init sharebill-backend        # nếu chưa có go.mod
+   go get github.com/gofiber/fiber/v2
+   go get github.com/jackc/pgx/v5/pgxpool
+   go get github.com/joho/godotenv
+   go get golang.org/x/crypto/bcrypt
+   go get github.com/golang-jwt/jwt/v5
+   go get github.com/go-playground/validator/v10
 
 Chạy server (mỗi lần code)
-cd D:\University\semester5\DACNPM\dath\share-bill\src\backend
-go run cmd/api/main.go
+   --- bash
+   cd D:\University\semester5\DACNPM\dath\share-bill\src\backend
+   go run cmd/api/main.go
 
 Server sẽ chạy tại: http://localhost:3000
