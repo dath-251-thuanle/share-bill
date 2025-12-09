@@ -97,6 +97,5 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	if err != nil {
 		return nil, "", err
 	}
-
 	return user, tokenString, nil
 }
