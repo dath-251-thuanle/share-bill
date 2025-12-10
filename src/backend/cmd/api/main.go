@@ -8,6 +8,7 @@ import (
 	"sharebill-backend/internal/app"
 	"sharebill-backend/internal/config"
 	"sharebill-backend/internal/handlers"
+	"sharebill-backend/internal/middleware"
 	"sharebill-backend/internal/repositories"
 	"sharebill-backend/internal/services"
 )
@@ -29,6 +30,11 @@ func main() {
 	api := fiberApp.Group("/api")
 	api.Post("/auth/register", authHandler.Register)
 	api.Post("/auth/login", authHandler.Login)
+
+	protected := api.Group("", middleware.AuthRequired())
+	protected.Get("/profile", authHandler.GetProfile)
+	protected.Patch("/profile", authHandler.EditProfile)
+	protected.Delete("/profile", authHandler.DeleteAccount)
 
 	// 3. Lấy port
 	port := os.Getenv("APP_PORT")

@@ -99,3 +99,50 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 	}
 	return user, tokenString, nil
 }
+
+func (s *AuthService) GetUserByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
+	return s.userRepo.FindByID(ctx, id)
+}
+
+func (s *AuthService) EditProfile(ctx context.Context, id uuid.UUID, name string, bankName, accountNumber, accountName *string) (*models.User, string ,error) {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, "", err
+	}
+	if user == nil {
+		return nil, "", errors.New("user not found")
+	}
+	user.Name = name
+	user.BankName = bankName
+	user.AccountNumber = accountNumber
+	user.AccountName = accountName
+	err = s.userRepo.Update(ctx, user)
+	if err != nil {
+		return nil, "", err
+	}
+	// Tạo lại token với thông tin cập nhật
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID.String(),
+		"name":    user.Name,
+		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return nil, "", err
+	}
+	return user, tokenString, nil
+}
+
+func (s *AuthService) DeleteUser(ctx context.Context, id uuid.UUID, password string) error {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return errors.New("user not found")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return errors.New("incorrect password")
+	}
+	return s.userRepo.Delete(ctx, id)
+}
