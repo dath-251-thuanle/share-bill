@@ -22,6 +22,7 @@ func main() {
 	userRepo := repositories.NewUserRepository(db)
 	authService := services.NewAuthService(userRepo)
 	authHandler := handlers.NewAuthHandler(authService)
+	eventHandler := handlers.NewEventHandler(services.NewEventService(repositories.NewEventRepository(db)))
 
 	// 2. Khởi tạo Fiber app
 	fiberApp := app.New()
@@ -35,6 +36,13 @@ func main() {
 	protected.Get("/profile", authHandler.GetProfile)
 	protected.Patch("/profile", authHandler.EditProfile)
 	protected.Delete("/profile", authHandler.DeleteAccount)
+
+	protected.Post("/event", eventHandler.CreateEvent)
+	protected.Get("/event", eventHandler.GetMyEvents)
+	protected.Get("/event/:id", eventHandler.GetEventDetail)
+	protected.Patch("/event/:id", eventHandler.UpdateEvent)
+	protected.Post("/event/:id/settle", eventHandler.SettleEvent)
+	protected.Delete("/event/:id", eventHandler.DeleteEvent)
 
 	// 3. Lấy port
 	port := os.Getenv("APP_PORT")
