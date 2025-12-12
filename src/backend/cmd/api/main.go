@@ -41,7 +41,7 @@ func main() {
 
 	// CRUD event
 	protected.Post("/event", eventHandler.CreateEvent)
-	protected.Get("/event", eventHandler.GetMyEvents)
+	protected.Get("/my-event", eventHandler.GetMyEvents)
 	protected.Get("/event/:id", eventHandler.GetEventDetail)
 	protected.Patch("/event/:id", eventHandler.UpdateEvent)
 	protected.Post("/event/:id/settle", eventHandler.SettleEvent)
@@ -51,6 +51,7 @@ func main() {
 	protected.Post("/event/:id/join", participantHandler.JoinEvent)
 	protected.Post("/event/:id/leave", participantHandler.LeaveEvent)
 	protected.Get("/event/:id/participants", participantHandler.GetParticipants)
+	protected.Get("/participated-event", participantHandler.GetMyEvents)
 
 	// 3. Lấy port
 	port := os.Getenv("APP_PORT")

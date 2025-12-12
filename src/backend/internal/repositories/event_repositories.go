@@ -118,7 +118,7 @@ func (r *eventRepository) SettleEvent(ctx context.Context, eventID uuid.UUID, is
 }
 
 func (h *eventRepository) Delete(ctx context.Context, eventID uuid.UUID) error {
-	query := `DELETE FROM events WHERE id = $1`
+	query := `DELETE FROM events WHERE id = $1;`
 	result, err := h.db.Exec(ctx, query, eventID)
 	if err != nil {
 		return err
