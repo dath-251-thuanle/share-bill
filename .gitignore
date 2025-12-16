@@ -1,3 +1,4 @@
-app.env
+.env
 go.mod
 go.sum
+.git
