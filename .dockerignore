@@ -1,5 +1,5 @@
 .git
 .gitignore
-app.env
+.env
 docker-compose.yaml
 Dockerfile

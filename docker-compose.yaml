@@ -52,6 +52,7 @@ services:
       - CLOUDINARY_URL=${CLOUDINARY_URL}
     depends_on:
       - postgres
+      - redis
     networks:
       - sharever-network
 
