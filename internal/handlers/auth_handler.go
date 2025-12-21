@@ -11,6 +11,8 @@ import (
 type UserHandler struct {
 	service *services.UserService
 }
+
+// Tao user handler
 func NewUserHandler(s *services.UserService) *UserHandler {
 	return &UserHandler{service: s}
 }
@@ -18,6 +20,7 @@ func NewUserHandler(s *services.UserService) *UserHandler {
 
 // POST /api/auth/register/request
 // Body: { "email": "a@gmail.com" }
+// Gui ma OTP de dang ky
 func (h *UserHandler) RegisterRequestCode(c *fiber.Ctx) error {
 	var req models.RegisterRequestCodeRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -37,14 +40,29 @@ func (h *UserHandler) RegisterRequestCode(c *fiber.Ctx) error {
 	})
 }
 
+// POST /api/auth/register/resend
+// Body: { "email": "..." }
+// Resend verification code when OTP expired or not received
+func (h *UserHandler) RegisterResendCode(c *fiber.Ctx) error {
+	var req models.RegisterRequestCodeRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{Error: "INVALID_BODY", Message: "Invalid JSON format"})
+	}
+
+	err := h.service.ResendVerifyCode(c.Context(), req.Email)
+	if err != nil {
+		return utils.MapError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.SuccessResponse{Success: true, Message: "Verification code resent"})
+}
 // POST /api/auth/register/confirm
 // Body: { "email": "...", "code": "123456", "password": "...", "name": "..." }
+// Xac nhan OTP va tao user
 func (h *UserHandler) RegisterConfirm(c *fiber.Ctx) error {
 	var req models.RegisterConfirmRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{
-			Error: "INVALID_BODY", Message: "Invalid JSON format",
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{Error: "INVALID_BODY", Message: "Invalid JSON format"})
 	}
 
 	resp, err := h.service.RegisterConfirm(c.Context(), req)
@@ -59,9 +77,9 @@ func (h *UserHandler) RegisterConfirm(c *fiber.Ctx) error {
 	})
 }
 
-
 // POST /api/auth/login
 // Body: { "email": "...", "password": "..." }
+// Dang nhap, tra access va refresh token
 func (h *UserHandler) Login(c *fiber.Ctx) error {
 	var req models.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -82,8 +100,41 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 	})
 }
 
+// POST /api/auth/refresh
+// Body: { "refresh_token": "..." }
+// Doi refresh token lay access moi
+func (h *UserHandler) RefreshToken(c *fiber.Ctx) error {
+	var req models.RefreshRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{Error: "INVALID_BODY", Message: "Invalid JSON format"})
+	}
+
+	access, refresh, err := h.service.RefreshTokens(c.Context(), req.RefreshToken)
+	if err != nil {
+		return utils.MapError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(models.SuccessResponse{Success: true, Data: models.RefreshResponse{Token: access, RefreshToken: refresh}})
+}
+
+// POST /api/auth/logout
+// Body: { "refresh_token": "..." }
+// Thu hoi refresh token (logout)
+func (h *UserHandler) Logout(c *fiber.Ctx) error {
+	var req models.LogoutRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{Error: "INVALID_BODY", Message: "Invalid JSON format"})
+	}
+	err := h.service.RevokeRefreshToken(c.Context(), req.RefreshToken)
+	if err != nil {
+		return utils.MapError(c, err)
+	}
+	return c.Status(fiber.StatusOK).JSON(models.SuccessResponse{Success: true, Message: "Logged out"})
+}
+
 // GET /api/v1/users/profile
 // Header: Authorization: Bearer <token>
+// Tra profile user cho request da xac thuc
 func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(int64)
 	if !ok {
@@ -104,6 +155,7 @@ func (h *UserHandler) GetProfile(c *fiber.Ctx) error {
 }
 
 // PUT /api/v1/users/profile
+// Cap nhat profile user
 func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 
@@ -126,6 +178,7 @@ func (h *UserHandler) UpdateProfile(c *fiber.Ctx) error {
 	})
 }
 
+// Cap nhat avatar user
 func (h *UserHandler) UpdateAvatar(c *fiber.Ctx) error{
 	userID := c.Locals("user_id").(int64)
 	fileHeader, err := c.FormFile("avatar")
