@@ -13,10 +13,12 @@ type ExpenseService struct {
 	store database.Store
 }
 
+// Khoi tao ExpenseService
 func NewExpenseService(store database.Store) *ExpenseService {
 	return &ExpenseService{store: store}
-}
+} 
 
+// Tao transaction va chen payers + beneficiaries trong DB
 func (s *ExpenseService) CreateTransaction(ctx context.Context, userID int64, eventUUIDStr string, req models.CreateTransactionRequest) (models.TransactionResponse, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {
@@ -75,6 +77,7 @@ func (s *ExpenseService) CreateTransaction(ctx context.Context, userID int64, ev
 	}, nil
 }
 
+// Lay chi tiet transaction (payers + shares)
 func (s *ExpenseService) GetTransaction(ctx context.Context, userID int64, transactionUUIDStr string) (models.TransactionDetailResponse, error) {
 	txnUUID, err := utils.StringToUUID(transactionUUIDStr)
 	if err != nil {
@@ -122,6 +125,7 @@ func (s *ExpenseService) GetTransaction(ctx context.Context, userID int64, trans
 }
 
 
+// Cap nhat transaction (xoa va chen lai chi tiet)
 func (s *ExpenseService) UpdateTransaction(ctx context.Context, userID int64, transactionUUIDStr string, req models.CreateTransactionRequest) error {
 	txnUUID, err := utils.StringToUUID(transactionUUIDStr)
 	if err != nil {
@@ -167,6 +171,7 @@ func (s *ExpenseService) UpdateTransaction(ctx context.Context, userID int64, tr
 	})
 }
 
+// Xoa transaction
 func (s *ExpenseService) DeleteTransaction(ctx context.Context, userID int64, transactionUUIDStr string) error {
 	txnUUID, err := utils.StringToUUID(transactionUUIDStr)
 	if err != nil {
@@ -186,6 +191,7 @@ func (s *ExpenseService) DeleteTransaction(ctx context.Context, userID int64, tr
 	return s.store.DeleteExpense(ctx, expense.ExpenseID)
 }
 
+// Liet ke transactions trong event
 func (s *ExpenseService) ListTransactions(ctx context.Context, userID int64, eventUUIDStr string) ([]models.TransactionDTO, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {
@@ -227,6 +233,7 @@ func (s *ExpenseService) ListTransactions(ctx context.Context, userID int64, eve
 	return result, nil
 }
 
+// Helper: chen payers va beneficiaries cho expense
 func (s *ExpenseService) insertExpenseDetails(
 	ctx context.Context,
 	q *database.Queries,

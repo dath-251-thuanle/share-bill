@@ -20,6 +20,9 @@ var (
 	ErrBalanceNotZero = errors.New("cannot leave event: you have unsettled balance")
 	ErrEventClosed    = errors.New("event is closed")
 
+	// Rate limit / client errors
+	ErrTooManyRequests = errors.New("too many requests")
+
 	// 500 Internal Server Error
 	ErrInternalDB = errors.New("internal database error")
 )

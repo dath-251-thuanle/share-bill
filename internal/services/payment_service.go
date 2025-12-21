@@ -15,10 +15,12 @@ type PaymentService struct {
 	store database.Store
 }
 
+// Khoi tao PaymentService
 func NewPaymentService(store database.Store) *PaymentService {
 	return &PaymentService{store: store}
-}
+} 
 
+// Dat collector cho event (deactivate cu + tao moi)
 func (s *PaymentService) SetCollector(ctx context.Context, requesterID int64, eventUUIDStr string, req models.SetCollectorRequest) error {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil { 
@@ -45,8 +47,13 @@ func (s *PaymentService) SetCollector(ctx context.Context, requesterID int64, ev
 	}
 
 	err = s.store.ExecTx(ctx, func(q *database.Queries) error {
-		if err := q.DeactivateCollector(ctx, event.EventID); err != nil {
-			return err
+		// Get active collector for event to deactivate it
+		activeCollector, err := q.GetActiveCollectorByEventID(ctx, event.EventID)
+		if err == nil {
+			// Only deactivate if one exists
+			if err := q.DeactivateCollector(ctx, activeCollector.CollectorID); err != nil {
+				return err
+			}
 		}
 		var bankName, bankAcc, bankOwner string
 		if part.BankName == nil || part.BankAccount == nil || part.BankOwner == nil {
@@ -58,7 +65,7 @@ func (s *PaymentService) SetCollector(ctx context.Context, requesterID int64, ev
 			bankAcc = *part.BankAccount
 			bankOwner = *part.BankOwner
 		}
-		_, err := q.CreateCollector(ctx, database.CreateCollectorParams{
+		_, err = q.CreateCollector(ctx, database.CreateCollectorParams{
 			EventID:       event.EventID,
 			ParticipantID: &part.ParticipantID, 
 			BankName:      bankName,
@@ -73,6 +80,7 @@ func (s *PaymentService) SetCollector(ctx context.Context, requesterID int64, ev
 	return nil
 }
 
+// Lay collector dang active cho event
 func (s *PaymentService) GetActiveCollector(ctx context.Context, userID int64, eventUUIDStr string) (models.CollectorResponse, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil { 
@@ -105,6 +113,7 @@ func (s *PaymentService) GetActiveCollector(ctx context.Context, userID int64, e
 	}, nil
 }
 
+// Tao URL QR cho thanh toan (quicklink)
 func (s *PaymentService) GeneratePaymentQR(ctx context.Context, userID int64, eventUUIDStr string, receiverUUIDStr string, amount float64) (models.PaymentQRResponse, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil { 

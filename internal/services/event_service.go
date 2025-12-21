@@ -293,6 +293,15 @@ func (s *EventService) LeaveEvent(ctx context.Context, userID int64, eventUUID s
 		return utils.ErrNotFound
 	}
 
+	// find participant record first
+	part, err := s.store.GetParticipantByEventAndUser(ctx, database.GetParticipantByEventAndUserParams{
+		EventID: event.EventID,
+		UserID:  &userID,
+	})
+	if err != nil {
+		return utils.ErrNotFound
+	}
+
 	balance, err := s.store.GetParticipantBalance(ctx, database.GetParticipantBalanceParams{
 		EventID: event.EventID,
 		UserID:  &userID,
@@ -302,8 +311,9 @@ func (s *EventService) LeaveEvent(ctx context.Context, userID int64, eventUUID s
 		if balanceFloat > 0.01 || balanceFloat < -0.01 {
 			return utils.ErrBalanceNotZero
 		}
-	}	
-	err = s.store.RemoveParticipantByID(ctx, userID)
+	}
+
+	err = s.store.RemoveParticipantByID(ctx, part.ParticipantID)
 	if err != nil {
 		return utils.ErrInternalDB
 	}

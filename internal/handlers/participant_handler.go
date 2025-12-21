@@ -12,12 +12,14 @@ type ParticipantHandler struct {
 	service *services.ParticipantService
 }
 
+// Tao participant handler
 func NewParticipantHandler(s *services.ParticipantService) *ParticipantHandler {
 	return &ParticipantHandler{service: s}
-}
+} 
 
 
 // GET /api/v1/events/:eventId/participants
+// Liet ke participants
 func (h *ParticipantHandler) ListParticipants(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -33,6 +35,7 @@ func (h *ParticipantHandler) ListParticipants(c *fiber.Ctx) error {
 }
 
 // POST /api/v1/events/:eventId/participants
+// Them participant ao/guest
 func (h *ParticipantHandler) AddVirtualParticipant(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -54,6 +57,7 @@ func (h *ParticipantHandler) AddVirtualParticipant(c *fiber.Ctx) error {
 }
 
 // PUT /api/v1/participants/:participantId
+// Cap nhat participant (owner hoac chu event cho guest)
 func (h *ParticipantHandler) UpdateParticipant(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	partUUID := c.Params("participantId")
@@ -76,6 +80,7 @@ func (h *ParticipantHandler) UpdateParticipant(c *fiber.Ctx) error {
 }
 
 // DELETE /api/v1/participants/:participantId
+// Kick participant (chi creator, kiem tra balance)
 func (h *ParticipantHandler) KickParticipant(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	partUUID := c.Params("participantId")

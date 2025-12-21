@@ -13,11 +13,13 @@ type UploadHandler struct {
 	service *services.UploadService
 }
 
+// Tao upload handler
 func NewUploadHandler(s *services.UploadService) *UploadHandler{
 	return &UploadHandler{service: s}
-}
+} 
 
 // POST /api/v1/upload
+// Upload hinh anh len cloud
 func (h *UploadHandler) UploadImage (c *fiber.Ctx) error{
 	fileHeader, err := c.FormFile("file")
 	if err != nil {

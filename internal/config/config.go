@@ -12,6 +12,7 @@ type Config struct {
 	ServerAddress       string        `mapstructure:"SERVER_ADDRESS"`
 	JWTSecret           string        `mapstructure:"JWT_SECRET"`
 	TokenDuration       time.Duration `mapstructure:"TOKEN_DURATION"`
+	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
 
 	// Redis
 	RedisAddress  string `mapstructure:"REDIS_ADDRESS"`
@@ -35,6 +36,7 @@ func LoadConfig(path string) (config Config, err error) {
 	viper.BindEnv("SERVER_ADDRESS")
 	viper.BindEnv("JWT_SECRET")
 	viper.BindEnv("TOKEN_DURATION")
+	viper.BindEnv("REFRESH_TOKEN_DURATION")
 	viper.BindEnv("REDIS_ADDRESS")
 	viper.BindEnv("REDIS_PASSWORD")
 	viper.BindEnv("REDIS_DB")

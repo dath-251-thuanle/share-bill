@@ -17,10 +17,12 @@ type SettlementService struct {
 	store database.Store
 }
 
+// Khoi tao SettlementService
 func NewSettlementService(store database.Store) *SettlementService {
 	return &SettlementService{store: store}
-}
+} 
 
+// Tinh balances, tao suggestions va tra summary
 func (s *SettlementService) GetEventSummary(ctx context.Context, userID int64, eventUUIDStr string) (models.EventSummaryResponse, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {
@@ -169,6 +171,7 @@ func (s *SettlementService) GetEventSummary(ctx context.Context, userID int64, e
 
 	return resp, nil
 }
+// Lay thong tin collector hien tai (helper)
 func (s *SettlementService) getCollectorInfo(ctx context.Context, eventID int64) *models.CollectorDTO {
 	collector, err := s.store.GetActiveCollectorByEventID(ctx, eventID)
 	if err != nil {
@@ -186,6 +189,7 @@ func (s *SettlementService) getCollectorInfo(ctx context.Context, eventID int64)
 	
 }
 
+// Ghi mot settlement trong DB
 func (s *SettlementService) CreateSettlement(ctx context.Context, userID int64, eventUUIDStr string, req models.CreateSettlementRequest) error {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {

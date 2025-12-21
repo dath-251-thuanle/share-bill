@@ -12,12 +12,14 @@ type ExpenseHandler struct {
 	service *services.ExpenseService
 }
 
+// Tao expense handler
 func NewExpenseHandler(s *services.ExpenseService) *ExpenseHandler {
 	return &ExpenseHandler{service: s}
 }
 
 
 // POST /api/v1/events/:eventId/transactions
+// Tao transaction (payers + shares)
 func (h *ExpenseHandler) CreateTransaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -41,6 +43,7 @@ func (h *ExpenseHandler) CreateTransaction(c *fiber.Ctx) error {
 }
 
 // GET /api/v1/events/:eventId/transactions
+// Liet ke transactions trong event
 func (h *ExpenseHandler) ListTransactions(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -57,6 +60,7 @@ func (h *ExpenseHandler) ListTransactions(c *fiber.Ctx) error {
 }
 
 // GET /api/v1/transactions/:transactionId
+// Lay chi tiet transaction
 func (h *ExpenseHandler) GetTransaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	txnUUID := c.Params("transactionId") 
@@ -72,6 +76,7 @@ func (h *ExpenseHandler) GetTransaction(c *fiber.Ctx) error {
 }
 
 // PUT /api/v1/transactions/:transactionId
+// Cap nhat transaction
 func (h *ExpenseHandler) UpdateTransaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	txnUUID := c.Params("transactionId")
@@ -95,6 +100,7 @@ func (h *ExpenseHandler) UpdateTransaction(c *fiber.Ctx) error {
 }
 
 // DELETE /api/v1/transactions/:transactionId
+// Xoa transaction
 func (h *ExpenseHandler) DeleteTransaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	txnUUID := c.Params("transactionId")

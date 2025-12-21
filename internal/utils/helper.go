@@ -57,10 +57,20 @@ func MapError(c *fiber.Ctx, err error) error {
 		statusCode = fiber.StatusUnauthorized
 		errorCode = "UNAUTHORIZED"
 
+	// 401 Token expired
+	case errors.Is(err, ErrExpiredToken):
+		statusCode = fiber.StatusUnauthorized
+		errorCode = "TOKEN_EXPIRED"
+
 	// 403 Forbidden
 	case errors.Is(err, ErrPermissionDenied):
 		statusCode = fiber.StatusForbidden
 		errorCode = "FORBIDDEN"
+
+	// 429 Too Many Requests
+	case errors.Is(err, ErrTooManyRequests):
+		statusCode = fiber.StatusTooManyRequests
+		errorCode = "TOO_MANY_REQUESTS"
 
 	// 404 Not Found
 	case errors.Is(err, ErrNotFound):

@@ -1,16 +1,17 @@
 package routes
 
 import (
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/monitor" // Dashboard thống kê (Optional)
-
 	"BACKEND/internal/config"
 	models "BACKEND/internal/dto"
 	"BACKEND/internal/handlers"
 	"BACKEND/internal/middleware"
 	"BACKEND/internal/utils"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/monitor" // Dashboard thống kê (Optional)
 )
 
+// Dang ky tat ca route va middleware
 func SetupRoutes(
 	app *fiber.App,
 	cfg config.Config,
@@ -39,8 +40,14 @@ func SetupRoutes(
 	auth.Post("/register/request", userHandler.RegisterRequestCode) 
 	// Xác thực & Tạo user
 	auth.Post("/register/confirm", userHandler.RegisterConfirm)
+	// Resend verification code if user didn't receive or code expired
+	auth.Post("/register/resend", userHandler.RegisterResendCode)
 	// Đăng nhập     
 	auth.Post("/login", userHandler.Login)
+	// Refresh token
+	auth.Post("/refresh", userHandler.RefreshToken)
+	// Logout (revoke refresh token)
+	auth.Post("/logout", userHandler.Logout)
 
 	// PROTECTED ROUTES =============================
 	authMiddleware := middleware.NewAuthMiddleware(tokenMaker)

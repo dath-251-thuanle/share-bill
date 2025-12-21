@@ -14,6 +14,7 @@ type UploadService struct {
 	cld *cloudinary.Cloudinary
 }
 
+// Khoi tao UploadService voi cloudinary url
 func NewUploadService(cloudinaryURL string) (*UploadService, error) {
 	cld, err := cloudinary.NewFromURL(cloudinaryURL)
 	if err != nil {
@@ -22,6 +23,7 @@ func NewUploadService(cloudinaryURL string) (*UploadService, error) {
 	return &UploadService{cld: cld}, nil
 }
 
+// Upload file len cloudinary va tra url
 func (s *UploadService) UploadImage(ctx context.Context, file multipart.File, filename string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

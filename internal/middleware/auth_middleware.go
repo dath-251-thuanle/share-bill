@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+// Middleware kiem tra header Bearer token va set user_id
 func NewAuthMiddleware(tokenMaker *utils.JWTMaker) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")

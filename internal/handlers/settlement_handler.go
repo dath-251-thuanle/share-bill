@@ -12,11 +12,13 @@ type SettlementHandler struct {
 	service *services.SettlementService
 }
 
+// Tao settlement handler
 func NewSettlementHandler(s *services.SettlementService) *SettlementHandler {
 	return &SettlementHandler{service: s}
-}
+} 
 
 // GET /api/v1/events/:eventId/summary
+// Tra balances va settlement plan
 func (h *SettlementHandler) GetEventSummary(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -33,6 +35,7 @@ func (h *SettlementHandler) GetEventSummary(c *fiber.Ctx) error {
 }
 
 // POST /api/v1/events/:eventId/settlements
+// Ghi nhan mot settlement
 func (h *SettlementHandler) CreateSettlement(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")

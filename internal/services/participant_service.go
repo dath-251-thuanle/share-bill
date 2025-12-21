@@ -13,10 +13,12 @@ type ParticipantService struct {
 	store database.Store
 }
 
+// Khoi tao ParticipantService
 func NewParticipantService(store database.Store) *ParticipantService {
 	return &ParticipantService{store: store}
-}
+} 
 
+// Liet ke participants va tra DTO
 func (s *ParticipantService) ListParticipants(ctx context.Context, userID int64, eventUUIDStr string) (models.ParticipantListResponse, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {
@@ -71,7 +73,7 @@ func (s *ParticipantService) ListParticipants(ctx context.Context, userID int64,
 		Participants: dtos,
 	}, nil
 }
-// Them participant ko phai user
+// Them participant khong phai user (guest)
 func (s *ParticipantService) AddVirtualParticipant(ctx context.Context, userID int64, eventUUIDStr string, req models.UpsertParticipantRequest) (models.ParticipantDTO, error) {
 	eventUUID, err := utils.StringToUUID(eventUUIDStr)
 	if err != nil {
@@ -121,6 +123,7 @@ func (s *ParticipantService) AddVirtualParticipant(ctx context.Context, userID i
 	}, nil
 }
 
+// Cap nhat participant (check quyen owner/creator)
 func (s *ParticipantService) UpdateParticipant(ctx context.Context, userID int64, participantUUIDStr string, req models.UpsertParticipantRequest) (models.ParticipantDTO, error) {
 	partUUID, err := utils.StringToUUID(participantUUIDStr)
 	if err != nil {
@@ -177,6 +180,7 @@ func (s *ParticipantService) UpdateParticipant(ctx context.Context, userID int64
 	}, nil
 }
 
+// Kick participant (chi creator, khong kick chinh minh neu co user)
 func (s *ParticipantService) KickParticipant(ctx context.Context, requesterID int64, participantUUIDStr string) error {
 	partUUID, err := utils.StringToUUID(participantUUIDStr)
 	if err != nil {

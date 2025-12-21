@@ -13,11 +13,13 @@ type PaymentHandler struct {
 	service *services.PaymentService
 }
 
+// Tao payment handler
 func NewPaymentHandler(s *services.PaymentService) *PaymentHandler {
 	return &PaymentHandler{service: s}
-}
+} 
 
 // PUT /api/v1/events/:eventId/collector
+// Chon collector cho event
 func (h *PaymentHandler) SetCollector(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -41,6 +43,7 @@ func (h *PaymentHandler) SetCollector(c *fiber.Ctx) error {
 }
 
 // GET /api/v1/events/:eventId/collector
+// Lay collector dang active
 func (h *PaymentHandler) GetCollector(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")
@@ -57,6 +60,7 @@ func (h *PaymentHandler) GetCollector(c *fiber.Ctx) error {
 }
 
 // GET /api/v1/events/:eventId/qr?amount=50000&receiverId=...
+// Sinh ma QR cho thanh toan
 func (h *PaymentHandler) GetPaymentQR(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	eventUUID := c.Params("eventId")

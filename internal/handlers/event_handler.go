@@ -12,12 +12,14 @@ type EventHandler struct {
 	service *services.EventService
 }
 
+// Tao event handler
 func NewEventHandler(s *services.EventService) *EventHandler {
 	return &EventHandler{service: s}
-}
+} 
 
 
 // CreateEvent POST /events
+// Tao event moi
 func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 	var req models.CreateEventRequest
@@ -37,10 +39,11 @@ func (h *EventHandler) CreateEvent(c *fiber.Ctx) error {
 	})
 }
 
-// GetEvent GET /events/:id
+// GetEvent GET /events/:eventId
+// Lay chi tiet event
 func (h *EventHandler) GetEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
-	eventUUID := c.Params("id")
+	eventUUID := c.Params("eventId")
 
 	resp, err := h.service.GetEvent(c.Context(), userID, eventUUID)
 	if err != nil {
@@ -52,10 +55,11 @@ func (h *EventHandler) GetEvent(c *fiber.Ctx) error {
 	})
 }
 
-// UpdateEvent PUT /events/:id
+// UpdateEvent PUT /events/:eventId
+// Cap nhat event (chi creator)
 func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
-	eventUUID := c.Params("id")
+	eventUUID := c.Params("eventId")
 	var req models.UpdateEventRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse{
@@ -74,6 +78,7 @@ func (h *EventHandler) UpdateEvent(c *fiber.Ctx) error {
 }
 
 // ListEvents GET /events
+// Liet ke event cua user
 func (h *EventHandler) ListEvents(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
 
@@ -87,10 +92,11 @@ func (h *EventHandler) ListEvents(c *fiber.Ctx) error {
 	})
 }
 
-// JoinEvent POST /events/:id/join
+// JoinEvent POST /events/:eventId/join
+// Tham gia event
 func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
-	eventUUID := c.Params("id")
+	eventUUID := c.Params("eventId")
 	var req models.UpsertParticipantRequest
 	_ = c.BodyParser(&req)
 
@@ -104,10 +110,11 @@ func (h *EventHandler) JoinEvent(c *fiber.Ctx) error {
 	})
 }
 
-// LeaveEvent POST /events/:id/leave
+// LeaveEvent POST /events/:eventId/leave
+// Roi event neu balance = 0
 func (h *EventHandler) LeaveEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
-	eventUUID := c.Params("id")
+	eventUUID := c.Params("eventId")
 
 	err := h.service.LeaveEvent(c.Context(), userID, eventUUID)
 	if err != nil {
@@ -119,10 +126,11 @@ func (h *EventHandler) LeaveEvent(c *fiber.Ctx) error {
 	})
 }
 
-// DeleteEvent DELETE /events/:id
+// DeleteEvent DELETE /events/:eventId
+// Xoa event (chi creator)
 func (h *EventHandler) DeleteEvent(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(int64)
-	eventUUID := c.Params("id")
+	eventUUID := c.Params("eventId")
 
 	err := h.service.DeleteEvent(c.Context(), userID, eventUUID)
 	if err != nil {

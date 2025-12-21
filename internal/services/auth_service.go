@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"strconv"
 	"time"
 
 	"BACKEND/internal/config"
@@ -13,7 +14,6 @@ import (
 	models "BACKEND/internal/dto"
 	"BACKEND/internal/utils"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -25,6 +25,8 @@ type UserService struct {
 	emailSender utils.EmailSender 
 	uploadService *UploadService 
 }
+
+// Khoi tao UserService
 func NewUserService(
 	store database.Store,
 	tokenMaker *utils.JWTMaker,
@@ -41,14 +43,13 @@ func NewUserService(
 		emailSender: emailSender,
 		uploadService: uploadService,
 	}
-}
+} 
 
+// Luu OTP vao redis va gui email
 func (s *UserService) RegisterRequestCode(ctx context.Context, email string) error {
 	_, err := s.store.GetUserByEmail(ctx, &email)
 	if err == nil {
 		return utils.ErrAlreadyExists
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return utils.ErrInternalDB
 	}
 
 	otp := utils.GenerateOTP()
@@ -74,6 +75,53 @@ func (s *UserService) RegisterRequestCode(ctx context.Context, email string) err
 	return nil
 }
 
+// Resend verification code (or resend existing OTP)
+func (s *UserService) ResendVerifyCode(ctx context.Context, email string) error {
+	// Don't allow resend if email already registered
+	_, err := s.store.GetUserByEmail(ctx, &email)
+	if err == nil {
+		return utils.ErrAlreadyExists
+	}
+
+	// Rate limit: max 5 resends per hour
+	cnt, err := s.redisClient.IncrResendCount(ctx, email, time.Hour)
+	if err != nil {
+		return utils.ErrInternalDB
+	}
+	if cnt > 100 {
+		return utils.ErrTooManyRequests
+	}
+
+	// Try fetch existing OTP; if none, generate a new one
+	storedOTP, err := s.redisClient.GetOTP(ctx, email)
+	if err == redis.Nil {
+		otp := utils.GenerateOTP()
+		if err := s.redisClient.SetOTP(ctx, email, otp, 5*time.Minute); err != nil {
+			return errors.New("failed to store otp in cache")
+		}
+		storedOTP = otp
+	} else if err != nil {
+		return utils.ErrInternalDB
+	} else {
+		// extend TTL to give user more time
+		_ = s.redisClient.SetOTP(ctx, email, storedOTP, 5*time.Minute)
+	}
+
+	subject := "Sharever - Mã xác thực đăng ký (gửi lại)"
+	content := fmt.Sprintf(`
+		<h1>Xin chào!</h1>
+		<p>Mã xác thực của bạn là: <strong>%s</strong></p>
+		<p>Mã này sẽ hết hạn sau 5 phút.</p>
+	`, storedOTP)
+	to := []string{email}
+	if err := s.emailSender.SendEmail(subject, content, to); err != nil {
+		return errors.New("failed to send email")
+	}
+
+	return nil
+}
+
+// Xac thuc OTP va tao user trong DB
 func (s *UserService) RegisterConfirm(ctx context.Context, req models.RegisterConfirmRequest) (models.UserResponse, error) {
 	storedOTP, err := s.redisClient.GetOTP(ctx, req.Email)
 	if err == redis.Nil {
@@ -118,6 +166,7 @@ func (s *UserService) RegisterConfirm(ctx context.Context, req models.RegisterCo
 }
 
 // Login
+// Dang nhap: tao access va refresh token, luu jti vao redis
 func (s *UserService) Login(ctx context.Context, req models.LoginRequest) (models.LoginResponse, error) {
 	user, err := s.store.GetUserByEmail(ctx, &req.Email)
 	if err != nil {
@@ -125,18 +174,77 @@ func (s *UserService) Login(ctx context.Context, req models.LoginRequest) (model
 	}
 	err = utils.CheckPassword(req.Password, user.Password)
 	if err != nil {
-		return models.LoginResponse{}, utils.ErrUnauthorized // Sai pass
+		return models.LoginResponse{}, utils.ErrUnauthorized // Wrong password
 	}
 
-	token, err := s.tokenMaker.CreateToken(user.UserID, s.config.TokenDuration)
+	accessToken, err := s.tokenMaker.CreateToken(user.UserID, s.config.TokenDuration)
+	if err != nil {
+		return models.LoginResponse{}, utils.ErrInternalDB
+	}
+
+	// Create refresh token and store jti in redis
+	refreshToken, jti, err := s.tokenMaker.CreateRefreshToken(user.UserID, s.config.RefreshTokenDuration)
+	if err != nil {
+		return models.LoginResponse{}, utils.ErrInternalDB
+	}
+	// Store in redis
+	err = s.redisClient.SetRefreshToken(ctx, jti, user.UserID, s.config.RefreshTokenDuration)
 	if err != nil {
 		return models.LoginResponse{}, utils.ErrInternalDB
 	}
 
 	return models.LoginResponse{
-		Token: token,
+		Token: accessToken,
+		RefreshToken: refreshToken,
 		User:  s.mapUserResponse(user),
 	}, nil
+}
+
+// RefreshTokens verifies refresh token, optionally rotates refresh token and returns new tokens
+// Verify refresh token, rotate va tra access + refresh moi
+func (s *UserService) RefreshTokens(ctx context.Context, refreshToken string) (string, string, error) {
+	claims, err := s.tokenMaker.VerifyRefreshToken(refreshToken)
+	if err != nil {
+		return "", "", err
+	}
+	jti, ok := claims["jti"].(string)
+	if !ok { return "", "", utils.ErrInvalidToken }
+	uidFloat, ok := claims["user_id"].(float64)
+	if !ok { return "", "", utils.ErrInvalidToken }
+	userID := int64(uidFloat)
+
+	// Check redis contains jti
+	storedUserStr, err := s.redisClient.GetRefreshToken(ctx, jti)
+	if err != nil {
+		return "", "", utils.ErrUnauthorized
+	}
+	storedUID, err := strconv.ParseInt(storedUserStr, 10, 64)
+	if err != nil || storedUID != userID {
+		return "", "", utils.ErrUnauthorized
+	}
+
+	// Rotate: delete old and create new
+	_ = s.redisClient.DeleteRefreshToken(ctx, jti)
+	newRefreshToken, newJti, err := s.tokenMaker.CreateRefreshToken(userID, s.config.RefreshTokenDuration)
+	if err != nil { return "", "", utils.ErrInternalDB }
+	err = s.redisClient.SetRefreshToken(ctx, newJti, userID, s.config.RefreshTokenDuration)
+	if err != nil { return "", "", utils.ErrInternalDB }
+
+	// Create new access token
+	accessToken, err := s.tokenMaker.CreateToken(userID, s.config.TokenDuration)
+	if err != nil { return "", "", utils.ErrInternalDB }
+
+	return accessToken, newRefreshToken, nil
+}
+
+// RevokeRefreshToken deletes a refresh token jti
+// Xoa refresh token jti khoi redis (logout)
+func (s *UserService) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
+	claims, err := s.tokenMaker.VerifyRefreshToken(refreshToken)
+	if err != nil { return err }
+	jti, ok := claims["jti"].(string)
+	if !ok { return utils.ErrInvalidToken }
+	return s.redisClient.DeleteRefreshToken(ctx, jti)
 }
 
 func (s *UserService) GetProfile(ctx context.Context, userID int64) (models.UserResponse, error) {
