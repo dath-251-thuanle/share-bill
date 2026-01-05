@@ -22,10 +22,13 @@ func main() {
 	if err != nil {
 		log.Fatal("Cannot load config:", err)
 	}
+
 	connPool := db.NewDatabase(cfg.DBSource)
 	defer connPool.Close()
+
 	store := database.NewStore(connPool)
 	log.Println("Database connected")
+
 	// Redis
 	redisClient := db.NewRedisClient(cfg.RedisAddress, cfg.RedisPassword, cfg.RedisDb)
 	log.Println("Redis connected")
@@ -34,6 +37,7 @@ func main() {
 	emailSender := utils.NewGmailSender(cfg.EmailSenderName, cfg.EmailSenderAddress, cfg.EmailSenderPassword)
 
 	uploadService, _ := services.NewUploadService(cfg.CloudinaryURL)
+
 	userService := services.NewUserService(store, tokenMaker, cfg, redisClient, emailSender, uploadService)
 	eventService := services.NewEventService(store)
 	participantService := services.NewParticipantService(store)
@@ -41,6 +45,8 @@ func main() {
 	settlementService := services.NewSettlementService(store)
 	paymentService := services.NewPaymentService(store)
 
+	paymentRequestService := services.NewPaymentRequestService(connPool)
+	passwordService := services.NewPasswordService(connPool)
 
 	userHandler := handlers.NewUserHandler(userService)
 	eventHandler := handlers.NewEventHandler(eventService)
@@ -49,29 +55,36 @@ func main() {
 	settlementHandler := handlers.NewSettlementHandler(settlementService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService)
 
+	paymentRequestHandler := handlers.NewPaymentRequestHandler(paymentRequestService)
+	passwordHandler := handlers.NewPasswordHandler(passwordService)
+
 	app := fiber.New(fiber.Config{
-		AppName:      "Sharever API",
-		BodyLimit:    10 * 1024 * 1024, 
+		AppName:   "Sharever API",
+		BodyLimit: 10 * 1024 * 1024,
 	})
 
-	app.Use(recover.New()) 
-	app.Use(logger.New())  
+	app.Use(recover.New())
+	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", 
+		AllowOrigins: "*",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
 		AllowMethods: "GET, POST, HEAD, PUT, DELETE, PATCH",
 	}))
+
 	routes.SetupRoutes(
 		app,
 		cfg,
 		tokenMaker,
 		userHandler,
 		eventHandler,
-		expenseHandler,	
+		expenseHandler,
 		settlementHandler,
-		participantHandler, 
-        paymentHandler,
+		participantHandler,
+		paymentHandler,
 	)
+
+	routes.SetupPaymentRequestRoutes(app, tokenMaker, paymentRequestHandler)
+	routes.SetupPasswordRoutes(app, tokenMaker, passwordHandler)
 
 	log.Printf("Server is running on %s", cfg.ServerAddress)
 	if err := app.Listen(cfg.ServerAddress); err != nil {
