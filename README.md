@@ -1,83 +1,73 @@
-# ShareBill – Group Expense Splitting System
-### DATH-251 – Team N8  
-**Project 3:** A web application that helps travel/offline groups track shared expenses, automatically calculate who owes whom, and generate accurate VietQR codes for settlement.
+# React + TypeScript + Vite
 
-## Project Overview
-ShareBill allows a group of friends to easily record expenses during a trip, automatically computes debts/surpluses for each member, and instantly generates personalized VietQR codes so everyone can settle with one scan (including refunds for those who overpaid).
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-Production URL (after deployment): https://bill.thuanle.me
+Currently, two official plugins are available:
 
-## Team N8 Members
-| Student ID | Full Name            | Role                        
-|------------|----------------------|-----------------------------|
-| 2313624    | Trần Đỗ Cao Trí      |                             |
-| 2352708    | Đinh Cao Thiên Lộc   |                             | 
-| 2311883    | Nguyễn Thị Kim Loan  |                             |
-| 2352918    | Nguyễn Lê Đức Phú    |                             |
-| 2352770    | Trần Hà My           |                             |
-| 2153485    | Nguyễn Quang Khởi    |                             |
-| 2311987    | Nguyễn Song Minh Luân|                             |
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Core Features
-1. Create Event → auto-generated URL `/event/:eventId`
-2. Manage participants (name + optional bank info)
-3. Add expenses/transactions:
-   - Description, amount
-   - Payer(s)
-   - Beneficiaries + custom split ratios (e.g., 1, 1, 1.5, 3…)
-4. Real-time debt calculation (who owes / who is owed)
-5. Assign “Collection Leader” → auto-generate QR for each member:
-   - Owes money → QR to pay the exact amount to leader
-   - Overpaid → QR for leader to refund the exact amount
-6. Complete Docker + CI/CD pipeline with self-hosted runners
+## React Compiler
 
-## Tech Stack
-| Layer       | Technology                                                  |
-|-------------|-------------------------------------------------------------|
-| Backend     | Go 1.23 + Fiber + GORM + PostgreSQL + Redis                 |
-| Frontend    | Next.js 14 (App Router) + TypeScript + TailwindCSS +        |
-|             | TanStack Query + Zod                                        |
-| Database    | PostgreSQL 16 + Redis 7                                     |
-| QR Code     | vietqr.io API + go-qrcode                                   |
-| Deployment  | Docker Compose + GitHub Actions (self-hosted runners)       |
-| Secrets     | mozilla/sops + age encryption                               |
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Project Structure
-├───.github
-│   └───workflows
-├───docs            
-├───logs
-├───reports         # All specifications are stored in here
-│   ├───M1
-│   ├───M2
-│   └───M3
-├───scripts
-├───src             # Backend and Frontend code are implemented
-└───uploads
+## Expanding the ESLint configuration
 
-## Local Development
-```bash
-git clone https://github.com/dath-251-thuanle/share-bill.git
-cd share-bill
-sops -d dev.enc.json > .env          # ask leader for sops key
-docker compose up --build -d
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-Access:
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-Frontend : http://localhost
-Backend API : http://localhost:8080
-PostgreSQL : localhost:5432
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-Production Deployment
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
 
-Server + 2 self-hosted runners already provided
-Merge to main → GitHub Actions auto build & deploy
-Command on prod: docker compose -f docker-compose.yml up -d --build
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-API Documentation
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-OpenAPI spec: /docs/api-spec.yaml
-Swagger UI: https://bill.thuanle.me/api/docs
-
-## Commit convention
-feat:  fix:  ui:  test:  docs:  refactor:  chore:
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```
