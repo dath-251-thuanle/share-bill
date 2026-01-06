@@ -2,6 +2,7 @@ export const endpoints = {
   auth: {
     login: () => "/auth/login",
     registerRequest: () => "/auth/register/request",
+    registerResend: () => "/auth/register/resend",
     registerConfirm: () => "/auth/register/confirm",
   },
 

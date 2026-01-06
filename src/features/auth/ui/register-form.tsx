@@ -22,6 +22,8 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
 
   async function handleRequestOtp(e: FormEvent) {
     e.preventDefault();
@@ -36,6 +38,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       setLoading(true);
       await http.post(endpoints.auth.registerRequest(), { email });
       setStep("confirm");
+      setResendMessage(null);
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -92,6 +95,28 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     }
   }
 
+  async function handleResendOtp() {
+    if (!email) {
+      setError("Please enter your email.");
+      return;
+    }
+    setError(null);
+    setResendMessage(null);
+    setResendLoading(true);
+    try {
+      await http.post(endpoints.auth.registerResend(), { email });
+      setResendMessage("Verification code resent.");
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to resend OTP.";
+      setError(msg);
+    } finally {
+      setResendLoading(false);
+    }
+  }
+
   return (
     <form
       className="space-y-4 mt-6"
@@ -125,6 +150,22 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
               disabled={loading}
             />
           </div>
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>Did not get the code?</span>
+            <button
+              type="button"
+              className="font-semibold text-purple-600 hover:underline disabled:opacity-60"
+              onClick={handleResendOtp}
+              disabled={loading || resendLoading || !email}
+            >
+              {resendLoading ? "Resending..." : "Resend code"}
+            </button>
+          </div>
+          {resendMessage && (
+            <p className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+              {resendMessage}
+            </p>
+          )}
 
           <div className="space-y-2">
             <label className="block text-xs font-medium text-gray-700">
@@ -195,6 +236,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
               setStep("request");
               setCode("");
               setError(null);
+              setResendMessage(null);
             }}
           >
             Back
