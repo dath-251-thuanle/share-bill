@@ -80,6 +80,7 @@ export default function ActivityPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<ExpenseFormValues | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrLoading, setQrLoading] = useState(false);
   const [qrSending, setQrSending] = useState(false);
@@ -180,6 +181,11 @@ export default function ActivityPage() {
     return participants.find((p: any) => p.userId === user.id) ?? null;
   }, [participants, user?.id]);
 
+  const createInitialValues = useMemo(
+    () => (currentParticipantId ? { paidById: currentParticipantId } : undefined),
+    [currentParticipantId]
+  );
+
   const myBalance = useMemo(() => {
     if (!summary || !myParticipant) return 0;
     return (
@@ -194,6 +200,14 @@ export default function ActivityPage() {
   const youAreOwed = myBalance > 0 ? myBalance : 0;
   const summaryReady = totalExpenses !== undefined;
   const settlementPlan = (summary?.settlementPlan ?? []) as SettlementPlanItem[];
+  const eventIsSettled = useMemo(() => {
+    if (!summary) return false;
+    const status = String(summary?.event?.status ?? "").toLowerCase();
+    if (status === "closed") return true;
+    const participants = summary?.participants ?? [];
+    if (!participants.length) return false;
+    return settlementPlan.length === 0;
+  }, [summary, settlementPlan.length]);
   const paymentItems = Array.isArray(paymentRequests) ? paymentRequests : [];
   const outgoingRequests = useMemo(() => {
     if (!myParticipant?.id) return [];
@@ -350,7 +364,7 @@ export default function ActivityPage() {
       toast.push("Add at least one participant first.");
       return;
     }
-    const payerId = currentParticipantId || values.paidById;
+    const payerId = values.paidById || currentParticipantId;
     if (!payerId) {
       toast.push("Unable to detect who paid. Please refresh and try again.");
       return;
@@ -430,6 +444,35 @@ export default function ActivityPage() {
     setEditValues(null);
     setEditingId(null);
     await refetch();
+  }
+
+  async function handleDeleteExpense() {
+    if (!selectedEventId || !editingId) return;
+    const confirmed = window.confirm("Delete this expense? This cannot be undone.");
+    if (!confirmed) return;
+    setDeleteLoading(true);
+    try {
+      await transactionApi.remove(String(selectedEventId), editingId);
+      toast.push("Expense deleted.");
+      setEditOpen(false);
+      setEditValues(null);
+      setEditingId(null);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["transactions", selectedEventId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["summary", selectedEventId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["events"],
+        }),
+      ]);
+    } catch (err) {
+      toast.push(normalizeError(err));
+    } finally {
+      setDeleteLoading(false);
+    }
   }
 
   async function handleDeleteActivity() {
@@ -819,7 +862,11 @@ export default function ActivityPage() {
           {rows.map((t) => (
             <div
               key={t.id}
-              className="bg-white rounded-[24px] border border-gray-100 px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow"
+              className={`rounded-[24px] border px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow ${
+                eventIsSettled
+                  ? "bg-emerald-50 border-emerald-100"
+                  : "bg-white border-gray-100"
+              }`}
             >
               <div className="min-w-0">
                 <div className="text-sm font-extrabold text-gray-900 truncate">
@@ -835,6 +882,11 @@ export default function ActivityPage() {
               </div>
 
               <div className="flex items-center gap-3">
+                {eventIsSettled && (
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                    Settled
+                  </span>
+                )}
                 <div className="text-sm font-extrabold text-gray-900">
                   {formatMoney(t.amount)}{" "}
                   <span className="text-xs font-semibold text-gray-400">
@@ -868,7 +920,7 @@ export default function ActivityPage() {
           <ExpenseForm
             participants={participantOptions}
             onSubmit={handleCreateExpense}
-            lockPaidById={currentParticipantId || undefined}
+            initialValues={createInitialValues}
           />
         )}
       </Modal>
@@ -945,13 +997,25 @@ export default function ActivityPage() {
         {editLoading ? (
           <div className="text-sm text-gray-600">Loading expense...</div>
         ) : editValues ? (
-          <ExpenseForm
-            participants={participantOptions}
-            initialValues={editValues}
-            submitLabel="Save changes"
-            successMessage="Expense updated."
-            onSubmit={handleUpdateExpense}
-          />
+          <>
+            <ExpenseForm
+              participants={participantOptions}
+              initialValues={editValues}
+              submitLabel="Save changes"
+              successMessage="Expense updated."
+              onSubmit={handleUpdateExpense}
+            />
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-red-100 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100 disabled:opacity-60"
+                onClick={handleDeleteExpense}
+                disabled={deleteLoading}
+              >
+                {deleteLoading ? "Deleting..." : "Delete expense"}
+              </button>
+            </div>
+          </>
         ) : (
           <div className="text-sm text-gray-600">Unable to load expense.</div>
         )}

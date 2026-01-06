@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   User, Mail, Shield, Bell, LogOut, CreditCard,
@@ -80,8 +81,10 @@ const CreditCardVisual = () => (
 
 // --- MAIN PAGE ---
 export default function AccountsPage() {
+  const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
+  const logout = useAuth((s) => s.logout);
   const queryClient = useQueryClient();
   const toast = useToast();
   const [editOpen, setEditOpen] = useState(false);
@@ -210,6 +213,12 @@ export default function AccountsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleLogout() {
+    logout();
+    queryClient.clear();
+    navigate("/login", { replace: true });
   }
 
   return (
@@ -359,7 +368,7 @@ export default function AccountsPage() {
 
            {/* Group 3: Danger Zone */}
            <div className="bg-white p-2 rounded-[32px] border border-gray-100 shadow-sm">
-               <SettingItem icon={LogOut} label="Log out" danger />
+               <SettingItem icon={LogOut} label="Log out" danger onClick={handleLogout} />
            </div>
 
            <div className="text-center text-sm text-gray-400 pt-4">
