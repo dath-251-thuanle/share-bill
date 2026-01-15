@@ -62,6 +62,54 @@ function formatDate(input?: string) {
   return d.toLocaleDateString("vi-VN");
 }
 
+function roundMoney(v: number) {
+  // hiển thị đẹp, tránh lẻ
+  return Math.round(v);
+}
+
+function computeExpenseNetByParticipant(detail: any) {
+  const amount = Number(detail?.amount ?? 0);
+  const payers = Array.isArray(detail?.payers) ? detail.payers : [];
+  const beneficiaries = Array.isArray(detail?.beneficiaries) ? detail.beneficiaries : [];
+
+  const payerCount = payers.length || 0;
+  const paidEach = payerCount > 0 ? amount / payerCount : 0;
+
+  // share theo weight
+  const totalWeight =
+    beneficiaries.reduce((sum: number, b: any) => sum + Number(b.weight ?? 0), 0) || 1;
+
+  const shareByPid = new Map<string, number>();
+  beneficiaries.forEach((b: any) => {
+    const pid = String(b.participantId ?? b.id ?? "");
+    if (!pid) return;
+    const w = Number(b.weight ?? 0);
+    const share = amount * (w / totalWeight);
+    shareByPid.set(pid, (shareByPid.get(pid) ?? 0) + share);
+  });
+
+  // net = paid - share
+  // +net => receive, -net => pay
+  const netByPid = new Map<string, number>();
+
+  // init tất cả người có trong beneficiaries
+  beneficiaries.forEach((b: any) => {
+    const pid = String(b.participantId ?? "");
+    if (!pid) return;
+    netByPid.set(pid, -(shareByPid.get(pid) ?? 0));
+  });
+
+  // cộng phần đã trả cho payer(s)
+  payers.forEach((p: any) => {
+    const pid = String(p.id ?? p.participantId ?? "");
+    if (!pid) return;
+    netByPid.set(pid, (netByPid.get(pid) ?? 0) + paidEach);
+  });
+
+  return netByPid; // Map<participantId, net>
+}
+
+
 async function fetchTransactions(eventId: string): Promise<Txn[]> {
   const data = await transactionApi.list(eventId);
   if (Array.isArray(data)) return data;
@@ -94,6 +142,10 @@ export default function ActivityPage() {
   const [dateFilter, setDateFilter] = useState<{ startDate?: string; endDate?: string }>({});
   const [payerFilter, setPayerFilter] = useState<string>("");
   const [amountFilter, setAmountFilter] = useState<{ min?: number; max?: number }>({});
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailTxnId, setDetailTxnId] = useState<string | null>(null);
+
 
   const { data: events = [] } = useQuery({
     queryKey: ["events"],
@@ -184,6 +236,16 @@ export default function ActivityPage() {
       enabled: !!selectedEventId && !!txn.id && !isLoading,
     })),
   });
+
+  const txnDetailById = useMemo(() => {
+  const map = new Map<string, any>();
+  transactions.forEach((t, idx) => {
+    const q = transactionDetailsQueries[idx];
+    if (q?.data) map.set(String(t.id), q.data);
+  });
+  return map;
+}, [transactions, transactionDetailsQueries]);
+
 
   const detailedTransactions = useMemo(() => {
     return transactions.map((txn, index) => {
@@ -1095,7 +1157,7 @@ export default function ActivityPage() {
                   }}
                   className="text-sm text-purple-600 hover:text-purple-800 font-medium underline"
                 >
-                  Xóa bộ lọc
+                  Remove filter
                 </button>
               </div>
             )}
@@ -1139,15 +1201,29 @@ export default function ActivityPage() {
                         }`}
                       >
                         {t.yourBalance > 0 ? (
-                          `${t.mainPayerName} owe you ${formatMoney(Math.abs(t.yourBalance))} VND`
+                          `You are owed ${formatMoney(Math.abs(t.yourBalance))} VND`
                         ) : (
                           `You owe ${formatMoney(Math.abs(t.yourBalance))} VND`
                         )}
                       </span>
                     )}
 
+                    {/* View detail */}
+  <button
+    type="button"
+    onClick={() => {
+      setDetailTxnId(String(t.id));
+      setDetailOpen(true);
+    }}
+    className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+  >
+    <Users size={12} />
+    View detail
+  </button>
+
                     {/* Nút Edit */}
                     <button
+                    
                       type="button"
                       onClick={() => handleEditExpense(String(t.id))}
                       className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 whitespace-nowrap"
@@ -1410,6 +1486,102 @@ export default function ActivityPage() {
           </div>
         )}
       </Modal>
+
+      <Modal
+  open={detailOpen}
+  onClose={() => {
+    setDetailOpen(false);
+    setDetailTxnId(null);
+  }}
+  title="Expense detail"
+>
+  {(() => {
+    if (!detailTxnId) return <div className="text-sm text-gray-600">No expense selected.</div>;
+
+    const detail = txnDetailById.get(detailTxnId);
+    if (!detail) return <div className="text-sm text-gray-600">Loading detail...</div>;
+
+    const netByPid = computeExpenseNetByParticipant(detail);
+
+    // build rows for UI
+    const rows = Array.from(netByPid.entries())
+      .map(([pid, net]) => {
+        const isYou = String(pid) === String(currentParticipantId);
+        const name = isYou
+          ? "You"
+          : participantOptions.find((p) => String(p.id) === String(pid))?.name ?? "Member";
+
+        return {
+          pid,
+          name,
+          net,
+          abs: Math.abs(net),
+          type: net >= 0 ? "receive" : "pay",
+        };
+      })
+      // sort: receive trước, rồi pay
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === "receive" ? -1 : 1;
+        return b.abs - a.abs;
+      });
+
+    const currencyLabel = currency ?? "VND";
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+          <div className="text-sm font-semibold text-gray-900">
+            {detail.description ?? "Untitled"}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            Total: <span className="font-semibold text-gray-700">{formatMoney(Number(detail.amount ?? 0))} {currencyLabel}</span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {rows.map((r) => (
+            <div
+              key={r.pid}
+              className="rounded-2xl border border-gray-100 px-4 py-3 flex items-center justify-between"
+            >
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900 truncate">
+                  {r.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {r.type === "receive" ? "Will receive" : "Need to pay"}
+                </div>
+              </div>
+
+              <div
+                className={`text-sm font-extrabold whitespace-nowrap ${
+                  r.type === "receive" ? "text-emerald-700" : "text-rose-700"
+                }`}
+              >
+                {r.type === "receive" ? "+" : "-"}
+                {formatMoney(roundMoney(r.abs))} {currencyLabel}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+            onClick={() => {
+              setDetailOpen(false);
+              setDetailTxnId(null);
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  })()}
+</Modal>
+
 
       {/* === THÊM MODAL DANH SÁCH THÀNH VIÊN NGAY ĐÂY === */}
       <Modal
