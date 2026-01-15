@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Home, Activity, CreditCard, Users, Plus } from "lucide-react";
@@ -14,33 +14,73 @@ const navItems = [
   { to: "/app/accounts", label: "Accounts", icon: Users },
 ];
 
+type SortMode = "date_desc" | "date_asc" | "name_asc" | "name_desc";
+
+function parseEventDate(ev: any) {
+  // ưu tiên createdAt; fallback updatedAt
+  const raw = ev?.createdAt ?? ev?.updatedAt;
+  const t = raw ? Date.parse(raw) : 0;
+  return Number.isFinite(t) ? t : 0;
+}
+
+function formatDate(raw?: string) {
+  if (!raw) return "";
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  // DD/MM/YYYY theo kiểu VN
+  return d.toLocaleDateString("vi-VN");
+}
+
 export function Sidebar() {
   const navigate = useNavigate();
   const { selectedEventId, setSelectedEventId } = useEventStore();
+  const [sortMode, setSortMode] = useState<SortMode>("date_desc");
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
     queryFn: eventApi.list,
   });
 
+  // sort events (FE-only)
+  const sortedEvents = useMemo(() => {
+    const arr = Array.isArray(events) ? [...events] : [];
+    arr.sort((a: any, b: any) => {
+      if (sortMode === "name_asc") {
+        return String(a?.name ?? "").localeCompare(String(b?.name ?? ""), "vi", {
+          sensitivity: "base",
+        });
+      }
+      if (sortMode === "name_desc") {
+        return String(b?.name ?? "").localeCompare(String(a?.name ?? ""), "vi", {
+          sensitivity: "base",
+        });
+      }
+
+      const ta = parseEventDate(a);
+      const tb = parseEventDate(b);
+      return sortMode === "date_asc" ? ta - tb : tb - ta;
+    });
+    return arr;
+  }, [events, sortMode]);
+
   // auto-select event đầu tiên nếu chưa có
   useEffect(() => {
-    if (!events.length) {
+    if (!sortedEvents.length) {
       if (selectedEventId) setSelectedEventId(null);
       return;
     }
 
-    const match = events.find(
+    const match = sortedEvents.find(
       (event: any) => String(event.id) === String(selectedEventId)
     );
     if (!match) {
-      setSelectedEventId(String(events[0].id));
+      setSelectedEventId(String(sortedEvents[0].id));
     }
-  }, [events, selectedEventId, setSelectedEventId]);
+  }, [sortedEvents, selectedEventId, setSelectedEventId]);
 
   function handleSelect(eventId: string) {
     setSelectedEventId(String(eventId));
-    // chọn event xong -> nhảy sang expenses (giống Codex)
+    // chọn event xong -> nhảy sang activity
     navigate("/app/activity");
   }
 
@@ -97,24 +137,40 @@ export function Sidebar() {
         <div className="mt-8">
           <div className="flex items-center justify-between mb-4">
             <div className="text-lg font-bold text-gray-900">Your events</div>
-            <button
-              className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg shadow-purple-200 hover:scale-105 transition-transform"
-              onClick={() => navigate("/app?create=1")}
-            >
-              <Plus size={14} /> New
-            </button>
+
+            <div className="flex items-center gap-2">
+              {/* Sort toggle: Date <-> A-Z */}
+              <button
+                type="button"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 text-gray-700 hover:bg-gray-50"
+                onClick={() => {
+                  setSortMode((m) => (m.startsWith("date") ? "name_asc" : "date_desc"));
+                }}
+                title={sortMode.startsWith("date") ? "Sorting: Date" : "Sorting: A-Z"}
+              >
+                {sortMode.startsWith("date") ? "Date" : "A-Z"}
+              </button>
+
+              <button
+                className="bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg shadow-purple-200 hover:scale-105 transition-transform"
+                onClick={() => navigate("/app?create=1")}
+              >
+                <Plus size={14} /> New
+              </button>
+            </div>
           </div>
 
           {isLoading && (
             <div className="text-xs text-gray-400">Loading events...</div>
           )}
 
-          {!isLoading && events.length === 0 && (
+          {!isLoading && sortedEvents.length === 0 && (
             <div className="text-xs text-gray-400">No events yet.</div>
           )}
 
-          <div className="space-y-2">
-            {events.map((event: any) => {
+          {/* Scrollable list */}
+          <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+            {sortedEvents.map((event: any) => {
               const isActiveEvent = String(event.id) === String(selectedEventId);
               const iconChar = (event.name || "?").slice(0, 1).toUpperCase();
 
@@ -129,17 +185,30 @@ export function Sidebar() {
                   }`}
                 >
                   <div
-                    className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm ${
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${
                       isActiveEvent ? "bg-purple-200" : "bg-gray-200"
                     }`}
                   >
                     {iconChar}
                   </div>
-                  <span className="text-sm truncate">{event.name}</span>
+
+                  <div className="min-w-0">
+                    <div className="text-sm truncate">{event.name}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {formatDate(event.createdAt)}
+                    </div>
+                  </div>
                 </button>
               );
             })}
           </div>
+
+          {/* Optional: click to switch sort direction (if you want) */}
+          {/* 
+          <div className="mt-2 text-[11px] text-gray-400">
+            Tip: Click “Date” or “A-Z” to toggle sort mode.
+          </div> 
+          */}
         </div>
       </div>
     </aside>
