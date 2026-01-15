@@ -16,6 +16,11 @@ export const participantApi = {
     return res.data.data ?? res.data;
   },
 
+  async inviteByEmail(eventId: string, payload: {email: string}): Promise<Participant> {
+    const res = await http.post(endpoints.participants.add(eventId), payload);
+    return res.data.data ?? res.data;
+  },
+
   async update(
     participantId: string,
     payload: { name?: string; bankInfo?: BankInfo }

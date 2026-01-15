@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Check, Copy, Link2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Calendar, Check, Copy, Link2, Pencil, Plus, RefreshCw, Trash2, Users } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
 
 import { useAuth } from "../../features/auth/model/use-auth";
 import { useEventStore } from "../../stores/use-event-store";
@@ -76,6 +77,8 @@ export default function ActivityPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<ExpenseFormValues | null>(null);
@@ -86,6 +89,11 @@ export default function ActivityPage() {
   const [qrSending, setQrSending] = useState(false);
   const [qrData, setQrData] = useState<PaymentQR | null>(null);
   const [qrPlan, setQrPlan] = useState<SettlementPlanItem | null>(null);
+  const [listParticipant, setListParticipant] = useState("");
+  const [showMemberList, setShowMemberList] = useState(false);
+  const [dateFilter, setDateFilter] = useState<{ startDate?: string; endDate?: string }>({});
+  const [payerFilter, setPayerFilter] = useState<string>("");
+  const [amountFilter, setAmountFilter] = useState<{ min?: number; max?: number }>({});
 
   const { data: events = [] } = useQuery({
     queryKey: ["events"],
@@ -125,18 +133,6 @@ export default function ActivityPage() {
   const { data: participantsData } = useQuery({
     queryKey: ["participants", selectedEventId],
     queryFn: () => participantApi.list(selectedEventId as string),
-    enabled: !!selectedEventId,
-  });
-
-  const { data: summary } = useQuery({
-    queryKey: ["summary", selectedEventId],
-    queryFn: () => settlementApi.summary(selectedEventId as string),
-    enabled: !!selectedEventId,
-  });
-
-  const { data: paymentRequests = [] } = useQuery({
-    queryKey: ["payment-requests", selectedEventId],
-    queryFn: () => paymentRequestApi.list(selectedEventId as string),
     enabled: !!selectedEventId,
   });
 
@@ -180,6 +176,59 @@ export default function ActivityPage() {
     if (!user?.id) return null;
     return participants.find((p: any) => p.userId === user.id) ?? null;
   }, [participants, user?.id]);
+
+  const transactionDetailsQueries = useQueries({
+    queries: transactions.map((txn) => ({
+      queryKey: ["transaction-detail", txn.id],
+      queryFn: () => transactionApi.detail(String(txn.id)),
+      enabled: !!selectedEventId && !!txn.id && !isLoading,
+    })),
+  });
+
+  const detailedTransactions = useMemo(() => {
+    return transactions.map((txn, index) => {
+      const detailQuery = transactionDetailsQueries[index];
+      if (detailQuery.isLoading || detailQuery.isError || !detailQuery.data) {
+        return { ...txn, yourBalance: 0 }; // fallback nếu đang load/lỗi
+      }
+
+      const detail = detailQuery.data;
+      let yourBalance = 0;
+
+      const isPayer = detail.payers?.some((p: any) => String(p.id) === currentParticipantId);
+      const beneficiaries = detail.beneficiaries ?? [];
+
+      if (isPayer) {
+        // Bạn là payer → tính phần bạn được hưởng
+        const totalWeight = beneficiaries.reduce((sum: number, b: any) => sum + (b.weight || 1), 0) || 1;
+        const yourWeight = beneficiaries.find((b: any) => String(b.participantId) === currentParticipantId)?.weight || 0;
+        yourBalance = detail.amount * (yourWeight / totalWeight); // bạn được hưởng
+      } else {
+        // Bạn là beneficiary → tính phần phải trả
+        const totalWeight = beneficiaries.reduce((sum: number, b: any) => sum + (b.weight || 1), 0) || 1;
+        const yourWeight = beneficiaries.find((b: any) => String(b.participantId) === currentParticipantId)?.weight || 0;
+        yourBalance = - (detail.amount * (yourWeight / totalWeight)); // bạn nợ
+      }
+
+      return {
+        ...txn,
+        yourBalance,
+        mainPayerName: detail.payers?.[0]?.name || "Unknown", // tên người trả chính
+      };
+    });
+  }, [transactions, transactionDetailsQueries, currentParticipantId]);
+
+  const { data: summary } = useQuery({
+    queryKey: ["summary", selectedEventId],
+    queryFn: () => settlementApi.summary(selectedEventId as string),
+    enabled: !!selectedEventId,
+  });
+
+  const { data: paymentRequests = [] } = useQuery({
+    queryKey: ["payment-requests", selectedEventId],
+    queryFn: () => paymentRequestApi.list(selectedEventId as string),
+    enabled: !!selectedEventId,
+  });
 
   const createInitialValues = useMemo(
     () => (currentParticipantId ? { paidById: currentParticipantId } : undefined),
@@ -238,6 +287,37 @@ export default function ActivityPage() {
       setTimeout(() => setInviteCopied(false), 1200);
     } catch (err) {
       toast.push(normalizeError(err));
+    }
+  }
+
+  async function handleInviteByEmail() {
+    if (!selectedEventId || !inviteEmail.trim()) {
+      toast.push("Please enter an email address.");
+      return;
+    }
+
+    if (!inviteEmail.includes("@")) {
+      toast.push("Please enter a valid email address.");
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      await participantApi.inviteByEmail(selectedEventId, {
+        email: inviteEmail.trim(),
+      });
+      
+      toast.push("Participant invited successfully.");
+      setInviteEmail("");
+      
+      // Refresh danh sách participants
+      await queryClient.invalidateQueries({
+        queryKey: ["participants", selectedEventId],
+      });
+    } catch (err) {
+      toast.push(normalizeError(err));
+    } finally {
+      setInviteLoading(false);
     }
   }
 
@@ -503,25 +583,93 @@ export default function ActivityPage() {
     }
   }
 
-  const rows = useMemo(() => {
-    return transactions.map((t) => {
-      const payerNames =
-        t.payerNames ??
-        (t.payers ? t.payers.map((p) => p?.name).filter(Boolean) : []);
-      const resolvedPayers = payerNames.map(
-        (name) => participantNameByLabel.get(name) ?? name
-      );
+  const handleListParticipant = () => {
+    if (!participants || participants.length === 0) {
+      setListParticipant("There isn't any member in this event.");
+      return;
+    }
 
-      const dateRaw = t.date ?? t.createdAt;
-      return {
-        id: String(t.id),
-        description: t.description ?? "Untitled",
-        amount: Number(t.amount ?? 0),
-        dateLabel: formatDate(dateRaw),
-        payerLabel: resolvedPayers.length ? resolvedPayers.join(", ") : "Unknown payer",
-      };
-    });
-  }, [transactions, participantNameByLabel]);
+    const participantList = participants
+      .map((p: any, index: number) => {
+        const isCurrentUser =
+          String(p.userId) === String(user?.id) ||
+          (p.email && user?.email && String(p.email) === String(user.email));
+
+        const displayName = normalizeParticipantName(p.name, user?.name, isCurrentUser);
+
+        const emailPart = p.email ? ` (${p.email})` : "";
+        const youTag = isCurrentUser ? " (you)" : "";
+
+        return `${index + 1}. ${displayName}${emailPart}${youTag}`;
+      })
+      .join("\n");
+
+    const result = `${participantList}`;
+
+    setListParticipant(result);
+  };
+
+  const filteredRows = useMemo(() => {
+    let result = detailedTransactions.map((t) => {
+    const payerNames = t.payerNames ?? [];
+    const resolvedPayerNames = payerNames.map(name => 
+      participantNameByLabel.get(name) ?? name
+    );
+
+    const dateRaw = t.date ?? t.createdAt;
+    const txnDate = dateRaw ? new Date(dateRaw) : null;
+
+    return {
+      id: String(t.id),
+      description: t.description ?? "Untitled",
+      amount: Number(t.amount ?? 0),
+      dateLabel: formatDate(dateRaw),
+      payerLabel: resolvedPayerNames.length ? resolvedPayerNames.join(", ") : "Unknown payer",
+      payerNames: resolvedPayerNames,
+      rawDate: txnDate,
+      yourBalance: t.yourBalance || 0,
+      mainPayerName: t.mainPayerName || resolvedPayerNames[0] || "Unknown",
+    };
+  });
+
+    // Lọc như cũ (giữ nguyên phần lọc ngày, tên, tiền)
+    if (dateFilter.startDate) {
+      const start = new Date(dateFilter.startDate);
+      start.setHours(0, 0, 0, 0);
+      result = result.filter(r => r.rawDate && r.rawDate >= start);
+    }
+    if (dateFilter.endDate) {
+      const end = new Date(dateFilter.endDate);
+      end.setHours(23, 59, 59, 999);
+      result = result.filter(r => r.rawDate && r.rawDate <= end);
+    }
+
+    if (payerFilter) {
+      const selectedPayerName = participantOptions.find(p => p.id === payerFilter)?.name || "";
+      if (selectedPayerName) {
+        result = result.filter(r => 
+          r.payerNames.some(name => name.toLowerCase().includes(selectedPayerName.toLowerCase()))
+        );
+      }
+    }
+
+    if (amountFilter.min !== undefined) {
+      result = result.filter(r => r.amount >= amountFilter.min!);
+    }
+    if (amountFilter.max !== undefined) {
+      result = result.filter(r => r.amount <= amountFilter.max!);
+    }
+
+    return result;
+  }, [
+    detailedTransactions,
+    participantNameByLabel,
+    dateFilter,
+    payerFilter,
+    amountFilter,
+    participantOptions,
+    currentParticipantId, // thêm để tính balance
+  ]);
 
   return (
     <div className="animate-enter space-y-8">
@@ -583,9 +731,10 @@ export default function ActivityPage() {
                 You owe {summaryReady ? formatMoney(youOwe) : "--"}
               </span>
             </div>
-          </div>
+          </div>   
 
           <div className="flex items-center gap-2">
+    
             <button
               onClick={handleRefresh}
               className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
@@ -593,6 +742,20 @@ export default function ActivityPage() {
             >
               <RefreshCw size={16} />
               Refresh
+            </button>
+
+            {/* Button Member list - chỉ dùng sau khi import Users */}
+            <button
+              onClick={() => {
+                setShowMemberList(true);
+                handleListParticipant()
+              }
+            }
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              disabled={!selectedEventId}
+            >
+              <Users size={16} />
+              Member list
             </button>
 
             <button
@@ -853,57 +1016,157 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {selectedEventId && !isLoading && !isError && rows.length === 0 && (
+      {selectedEventId && !isLoading && !isError && filteredRows.length === 0 && (
         <div className="text-gray-500">No transactions yet.</div>
       )}
 
-      {selectedEventId && !isLoading && !isError && rows.length > 0 && (
-        <div className="space-y-3">
-          {rows.map((t) => (
-            <div
-              key={t.id}
-              className={`rounded-[24px] border px-5 py-4 flex items-center justify-between hover:shadow-sm transition-shadow ${
-                eventIsSettled
-                  ? "bg-emerald-50 border-emerald-100"
-                  : "bg-white border-gray-100"
-              }`}
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-extrabold text-gray-900 truncate">
-                  {t.description}
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                  <Calendar size={14} />
-                  <span>{t.dateLabel}</span>
-                  <span className="text-gray-300">·</span>
-                  <span className="truncate">{t.payerLabel}</span>
+      {selectedEventId && !isLoading && !isError && (
+        <div className="space-y-6">
+          {/* Bộ lọc chi tiêu */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Expense Filters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Thời gian */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Time</label>
+                <div className="flex gap-3">
+                  <Input
+                    type="date"
+                    value={dateFilter.startDate || ""}
+                    onChange={(e) => setDateFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                    className="flex-1 h-10 rounded-2xl border-gray-200"
+                  />
+                  <Input
+                    type="date"
+                    value={dateFilter.endDate || ""}
+                    onChange={(e) => setDateFilter(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="flex-1 h-10 rounded-2xl border-gray-200"
+                  />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                {eventIsSettled && (
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                    Settled
-                  </span>
-                )}
-                <div className="text-sm font-extrabold text-gray-900">
-                  {formatMoney(t.amount)}{" "}
-                  <span className="text-xs font-semibold text-gray-400">
-                    VND
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleEditExpense(String(t.id))}
-                  className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+              {/* Người trả */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Payer</label>
+                <select
+                  value={payerFilter}
+                  onChange={e => setPayerFilter(e.target.value)}
+                  className="w-full h-10 rounded-2xl border border-gray-200 px-4 text-sm text-gray-800 outline-none focus:border-purple-300"
                 >
-                  <Pencil size={12} />
-                  Edit
-                </button>
+                  <option value="">All payers</option>
+                  {participantOptions.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Khoảng tiền */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Amount of money</label>
+                <div className="flex gap-3">
+                  <Input
+                    type="number"
+                    placeholder="From"
+                    value={amountFilter.min ?? ""}
+                    onChange={e => setAmountFilter(prev => ({ ...prev, min: Number(e.target.value) || undefined }))}
+                    className="flex-1 h-10 rounded-2xl border-gray-200"
+                  />
+                  <Input
+                    type="number"
+                    placeholder="To"
+                    value={amountFilter.max ?? ""}
+                    onChange={e => setAmountFilter(prev => ({ ...prev, max: Number(e.target.value) || undefined }))}
+                    className="flex-1 h-10 rounded-2xl border-gray-200"
+                  />
+                </div>
               </div>
             </div>
-          ))}
+
+            {/* Nút reset khi có bộ lọc */}
+            {(dateFilter.startDate || dateFilter.endDate || payerFilter || amountFilter.min !== undefined || amountFilter.max !== undefined) && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    setDateFilter({});
+                    setPayerFilter("");
+                    setAmountFilter({});
+                  }}
+                  className="text-sm text-purple-600 hover:text-purple-800 font-medium underline"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Danh sách expense */}
+          <div className="space-y-3">
+            {filteredRows.length > 0 ? (
+              filteredRows.map(t => (
+                <div
+                  key={t.id}
+                  className={`rounded-[24px] border px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between hover:shadow-sm transition-shadow gap-4 ${
+                    eventIsSettled ? "bg-emerald-50 border-emerald-100" : "bg-white border-gray-100"
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-extrabold text-gray-900 truncate">
+                      {t.description}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-1">
+                      <Calendar size={14} />
+                      <span>{t.dateLabel}</span>
+                      <span className="text-gray-300">·</span>
+                      <span className="truncate">{t.payerLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    {/* Số tiền tổng */}
+                    <div className="text-sm font-extrabold text-gray-900 whitespace-nowrap">
+                      {formatMoney(t.amount)} <span className="text-xs font-semibold text-gray-400">VND</span>
+                    </div>
+
+                    {/* Balance cá nhân */}
+                    {t.yourBalance !== 0 && (
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${
+                          t.yourBalance > 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        }`}
+                      >
+                        {t.yourBalance > 0 ? (
+                          `${t.mainPayerName} owe you ${formatMoney(Math.abs(t.yourBalance))} VND`
+                        ) : (
+                          `You owe ${formatMoney(Math.abs(t.yourBalance))} VND`
+                        )}
+                      </span>
+                    )}
+
+                    {/* Nút Edit */}
+                    <button
+                      type="button"
+                      onClick={() => handleEditExpense(String(t.id))}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      <Pencil size={12} />
+                      Edit
+                    </button>
+                  </div>
+                </div>
+                )
+              )
+            ) : (
+              <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-2xl border border-gray-200">
+                {transactions.length === 0
+                  ? "Chưa có chi tiêu nào trong hoạt động này."
+                  : "Không tìm thấy chi tiêu nào phù hợp với bộ lọc."}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -967,6 +1230,60 @@ export default function ActivityPage() {
               Send this link to your friends. It works on mobile and desktop.
             </div>
           </div>
+
+          {/* Danh sách participants hiện tại */}
+          <div className="space-y-2 pt-2 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-gray-700">Current participants</label>
+              <span className="text-xs text-gray-400">{participants.length} members</span>
+            </div>
+      
+            {participants.length === 0 ? (
+              <div className="text-sm text-gray-500 text-center py-4">
+                No participants yet. Add some!
+              </div>
+            ) : (
+        
+            <div className="max-h-64 overflow-y-auto space-y-2">
+            {participants.map((p: any) => {
+              const isCurrentUser =
+                String(p.userId) === String(user?.id) ||
+                (p.email && user?.email && String(p.email) === String(user.email));
+              const displayName = normalizeParticipantName(p.name, user?.name, isCurrentUser);
+              
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 flex items-center justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-gray-900 truncate">
+                      {displayName}
+                      {isCurrentUser && (
+                        <span className="ml-2 text-xs font-normal text-gray-500">(You)</span>
+                      )}
+                    </div>
+                    {p.email && (
+                      <div className="text-xs text-gray-500 truncate mt-0.5">
+                        {p.email}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {p.bankInfo?.accountNumber && (
+                    <div className="ml-3 flex-shrink-0">
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                        Bank linked
+                      </span>
+                    </div>
+                 )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
 
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span className="truncate">Sharever invites are tied to this activity.</span>
@@ -1092,6 +1409,83 @@ export default function ActivityPage() {
             Unable to load QR code.
           </div>
         )}
+      </Modal>
+
+      {/* === THÊM MODAL DANH SÁCH THÀNH VIÊN NGAY ĐÂY === */}
+      <Modal
+        open={showMemberList}
+        onClose={() => setShowMemberList(false)}
+        title="Danh sách thành viên"
+      >
+        <div className="space-y-6">
+          {participants.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              Chưa có thành viên nào trong hoạt động này.
+            </div>
+          ) : (
+            <>
+              {/* Thông tin tổng quan */}
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-gray-700">
+                  Tổng cộng: <span className="font-bold">{participants.length}</span> thành viên
+                </div>
+                <div className="text-xs text-gray-500">
+                  Đã copy danh sách vào clipboard!
+                </div>
+              </div>
+
+              {/* Danh sách dạng thẻ đẹp */}
+              <div className="max-h-[50vh] overflow-y-auto space-y-3 pr-2">
+                {participants.map((p: any) => {
+                  const isCurrentUser =
+                    String(p.userId) === String(user?.id) ||
+                    (p.email && user?.email && String(p.email) === String(user.email));
+                  const displayName = normalizeParticipantName(p.name, user?.name, isCurrentUser);
+                  return (
+                    <div
+                      key={p.id}
+                      className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex items-center justify-between gap-4 shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                          {displayName}
+                          {isCurrentUser && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                              Bạn
+                            </span>
+                          )}
+                        </div>
+                        {p.email && (
+                          <div className="text-sm text-gray-500 mt-1 truncate">
+                            {p.email}
+                          </div>
+                        )}
+                      </div>
+                      {p.bankInfo?.accountNumber ? (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                          Đã liên kết ngân hàng
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">Chưa liên kết</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Textarea hiển thị danh sách dạng text */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Member list</label>
+                <textarea
+                  readOnly
+                  value={listParticipant}
+                  className="w-full h-32 p-3 text-sm border border-gray-200 rounded-xl bg-gray-50 resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                  onClick={(e) => e.currentTarget.select()}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </Modal>
     </div>
   );

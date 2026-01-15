@@ -5,7 +5,7 @@ import { useToast } from "../../../shared/ui/toast";
 import { formatCurrencyVND } from "../../../shared/lib/format";
 import { normalizeError } from "../../../shared/lib/errors";
 
-export type SplitType = "equal" | "exact";
+export type SplitType = "equal" | "exact" | "percentage";
 
 export interface BeneficiaryInput {
   participantId: string;
@@ -61,7 +61,7 @@ export function ExpenseForm({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [exactAmounts, setExactAmounts] = useState<Record<string, string>>({});
   const [splitError, setSplitError] = useState<string | null>(null);
-
+  const [percentages, setPercentages] = useState<Record<string, number>>({});
   const participantById = useMemo(
     () => new Map(participants.map((p) => [p.id, p])),
     [participants]
@@ -166,23 +166,37 @@ export function ExpenseForm({
     }
 
     let beneficiaries: BeneficiaryInput[] = [];
-    if (splitType === "exact") {
-      const amounts = selected.map((id) => parseMoney(exactAmounts[id] ?? ""));
+
+    if (splitType === "percentage") {
+      const totalPercent = Object.values(percentages).reduce((a, b) => a + b, 0);
+      if (Math.abs(totalPercent - 100) > 0.01) {
+        setSplitError("Sum of percentages must equal 100%.");
+        return;
+      }
+
+      beneficiaries = selectedIds.map((id) => ({
+        participantId: id,
+        weight: (percentages[id] || 0) / 100, // Chuyển % thành tỷ lệ (0.25 = 25%)
+      }));
+    } else if (splitType === "exact") {
+      // Logic exact giữ nguyên
+      const amounts = selectedIds.map((id) => parseMoney(exactAmounts[id] ?? ""));
       if (amounts.some((v) => v <= 0)) {
-        setSplitError("Enter an exact amount for each selected participant.");
+        setSplitError("Enter exact amounts greater than 0 for all selected participants.");
         return;
       }
       const sum = amounts.reduce((acc, v) => acc + v, 0);
       if (sum !== numAmount) {
-        setSplitError("Exact amounts must sum to the total amount.");
+        setSplitError("Sum of exact amounts must equal the total amount.");
         return;
       }
-      beneficiaries = selected.map((id, index) => ({
+      beneficiaries = selectedIds.map((id, index) => ({
         participantId: id,
-        weight: amounts[index],
+        weight: amounts[index], // weight là số tiền thực
       }));
     } else {
-      beneficiaries = selected.map((id) => ({
+      // equal
+      beneficiaries = selectedIds.map((id) => ({
         participantId: id,
         weight: 1,
       }));
@@ -317,6 +331,27 @@ export function ExpenseForm({
           >
             Exact amounts
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSplitType("percentage");
+              // Khởi tạo % mặc định nếu cần (ví dụ chia đều)
+              const defaultPercent = 100 / selectedIds.length;
+              const newPercents: Record<string, number> = {};
+              selectedIds.forEach(id => {
+                newPercents[id] = defaultPercent;
+              });
+              setPercentages(newPercents);
+            }}
+            className={`px-4 py-2 rounded-2xl text-sm font-semibold transition-all ${
+              splitType === "percentage"
+                ? "bg-white shadow-sm text-purple-700"
+                : "text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Percentage (%)
+          </button>
         </div>
         {splitType === "equal" && (
           <p className="text-xs text-gray-500">
@@ -362,6 +397,68 @@ export function ExpenseForm({
                 })}
               </div>
             )}
+          </div>
+        )}
+        {splitType === "percentage" && selectedIds.length > 0 && (
+          <div className="mt-4 space-y-3 bg-gray-50 p-4 rounded-2xl">
+            <div className="text-sm font-medium text-gray-700">
+              Enter percentage for each selected participant
+            </div>
+            {selectedIds.map((id) => {
+              const participant = participantById.get(id);
+              const currentPercent = percentages[id] || 0;
+
+              return (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <span className="flex-1 font-medium text-gray-800 truncate">
+                    {participant?.name ?? "Thành viên"}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={currentPercent}
+                      onChange={(e) => {
+                        const newValue = parseFloat(e.target.value) || 0;
+                        setPercentages((prev) => ({
+                          ...prev,
+                          [id]: newValue,
+                        }));
+                        setSplitError(null);
+                      }}
+                      className="w-24 p-2 border rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-purple-300"
+                    />
+                    <span className="text-sm font-medium text-gray-600">%</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Hiển thị tổng phần trăm */}
+            <div className="pt-2 border-t border-gray-200">
+              <div className="flex justify-between text-sm font-medium">
+                <span>Tổng phần trăm:</span>
+                <span
+                  className={
+                    Math.abs(
+                      Object.values(percentages).reduce((a, b) => a + b, 0) - 100
+                    ) < 0.01
+                      ? "text-emerald-600"
+                      : "text-rose-600"
+                  }
+                >
+                  {Object.values(percentages)
+                    .reduce((a, b) => a + b, 0)
+                    .toFixed(2)}
+                  %
+                </span>
+              </div>
+            </div>
           </div>
         )}
         {splitError && <div className="text-xs text-rose-600">{splitError}</div>}
