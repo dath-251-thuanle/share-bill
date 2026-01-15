@@ -262,7 +262,7 @@ export default function HomePage() {
       <main className="flex-1 flex flex-col lg:flex-row items-center gap-10 px-8 lg:px-16 py-10">
         <section className="max-w-xl space-y-6 animate-enter delay-100">
           <p className="inline-flex items-center text-xs font-semibold text-purple-700 bg-purple-50 rounded-full px-3 py-1 border border-purple-100">
-            ✅ Logged in · Real data mode
+            🎉 Welcome to Sharever
           </p>
 
           <h1 className="text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight">
