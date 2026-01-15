@@ -2,17 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../features/auth/model/use-auth";
 import { DEFAULT_AVATAR_URL } from "../../shared/lib/default-avatar";
+import { getAvatarUrl } from "../../shared/lib/random-avatar";
 
-function Avatar({ name, src }: { name: string; src?: string }) {
-  const resolvedSrc = src || DEFAULT_AVATAR_URL;
+
+function Avatar({ name, seed }: { name: string; seed?: string }) {
   return (
     <img
       className="h-9 w-9 rounded-full object-cover"
-      src={resolvedSrc}
+      src={getAvatarUrl(seed)}
+      onError={(e) => {
+        e.currentTarget.src = DEFAULT_AVATAR_URL;
+      }}
       alt={name}
     />
   );
 }
+
 
 // ✅ MainLayout import { Header } OK
 export function Header() {
@@ -64,7 +69,11 @@ export function HeaderRight() {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-xl px-2 py-1 hover:bg-gray-50"
       >
-        <Avatar name={displayName} src={user?.avatar} />
+        <Avatar
+          name={displayName}
+          seed={user?.email ?? user?.id}
+        />
+
         <span className="text-sm font-semibold text-gray-900">
           {displayName}
         </span>

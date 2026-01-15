@@ -273,6 +273,7 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID int64, req model
 	return s.mapUserResponse(user), nil
 }
 
+
 func (s *UserService) mapUserResponse(user database.User) models.UserResponse {
 	var bankInfo *models.BankInfoDTO
 
@@ -295,12 +296,14 @@ func (s *UserService) mapUserResponse(user database.User) models.UserResponse {
 	}
 }
 
+
 func (s *UserService) toPtr(v string) *string {
 	if v == "" {
 		return nil
 	}
 	return &v
 }
+
 
 func (s *UserService) UpdateUserAvatar(ctx context.Context, userID int64, file multipart.File, filename string) (models.UserResponse, error) {
 	avatarUrl, err := s.uploadService.UploadImage(ctx, file, filename)

@@ -60,7 +60,7 @@ func SetupRoutes(
 	// Sửa profile
 	users.Put("/profile", userHandler.UpdateProfile)
 	// Update avatar
-	users.Patch("avatar", userHandler.UpdateAvatar)
+	users.Patch("/avatar", userHandler.UpdateAvatar)
 	
 	// --- EVENT ---
 	events := v1.Group("/events")

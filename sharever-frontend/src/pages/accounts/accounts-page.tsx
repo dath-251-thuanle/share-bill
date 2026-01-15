@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { User, LogOut, Edit3, Camera, Trash2 } from "lucide-react";
+import { User, LogOut, Edit3, Trash2 } from "lucide-react";
 
 import { useAuth } from "../../features/auth/model/use-auth";
 import { userApi } from "../../entities/user/api";
@@ -20,6 +20,9 @@ import {
 } from "../../features/bank-update/ui/bank-info-form";
 
 import { changePasswordSchema, type ChangePasswordPayload } from "../../features/auth/model/schemas";
+import { useEventStore } from "../../stores/use-event-store";
+
+import { getAvatarUrl } from "../../shared/lib/random-avatar";
 
 
 type LocalBankAccount = {
@@ -103,6 +106,8 @@ export default function AccountsPage() {
   const logout = useAuth((s) => s.logout);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const setSelectedEventId = useEventStore((s) => s.setSelectedEventId);
+
 
   const [editOpen, setEditOpen] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(false);
@@ -347,16 +352,18 @@ const [pwdError, setPwdError] = useState<string | null>(null);
             <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-teal-400 to-purple-400 opacity-20" />
 
             <div className="relative z-10 mt-8 mb-4">
-              <div className="w-28 h-28 mx-auto rounded-full p-1 bg-white shadow-md relative group cursor-pointer">
-                <img
-                  src={user?.avatar ?? (user as any)?.avatarUrl ?? DEFAULT_AVATAR_URL}
-                  alt="Profile"
-                  className="w-full h-full rounded-full object-cover border-4 border-white"
-                />
-                <div className="absolute bottom-0 right-1 bg-gray-900 text-white p-2 rounded-full hover:bg-purple-600 transition-colors">
-                  <Camera size={14} />
-                </div>
-              </div>
+              <div className="w-28 h-28 mx-auto rounded-full p-1 bg-white shadow-md">
+  <img
+  src={getAvatarUrl(user?.email ?? user?.id)}
+  onError={(e) => {
+    e.currentTarget.src = DEFAULT_AVATAR_URL;
+  }}
+  alt="Profile"
+  className="w-full h-full rounded-full object-cover border-4 border-white"
+/>
+
+</div>
+
             </div>
 
             <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
@@ -524,7 +531,10 @@ const [pwdError, setPwdError] = useState<string | null>(null);
           <div className="rounded-2xl border border-gray-100 p-4">
             <div className="flex items-center gap-4">
               <img
-                src={user?.avatar ?? (user as any)?.avatarUrl ?? DEFAULT_AVATAR_URL}
+                src={getAvatarUrl(user?.email ?? user?.id)}
+                onError={(e) => {
+                e.currentTarget.src = DEFAULT_AVATAR_URL;
+                }}
                 className="w-12 h-12 rounded-full object-cover border"
                 alt="avatar"
               />
@@ -599,16 +609,15 @@ const [pwdError, setPwdError] = useState<string | null>(null);
                     key={String(ev.id ?? ev.eventId ?? ev.event_id ?? ev.event_uuid)}
                     className="w-full text-left rounded-xl border border-gray-100 p-3 hover:bg-gray-50"
                     onClick={() => {
-                      // ⚠️ Nếu route event detail của bạn khác, sửa dòng này:
-                      navigate(`/app/activity/`);
-                      setPersonalOpen(false);
-                    }}
+                    const id = String(ev.id ?? ev.eventId ?? ev.event_id ?? ev.event_uuid);
+                    setSelectedEventId(id);
+                    navigate("/app/activity");
+                    setPersonalOpen(false);
+                  }}
+
                   >
                     <div className="font-semibold text-gray-900">
                       {ev.name ?? "Untitled event"}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {ev.status ? `Status: ${ev.status}` : " "}
                     </div>
                   </button>
                 ))}
@@ -795,7 +804,7 @@ const [pwdError, setPwdError] = useState<string | null>(null);
           setBankAccounts(next);
           saveBankAccounts(userKey, next);
 
-          toast.push(editingBankIndex !== null ? "Bank updated (local)." : "Bank added (local).");
+          toast.push(editingBankIndex !== null ? "Bank info updated" : "Bank info updated");
           setBankOpen(false);
 
           // sync participant with default bank (optional)

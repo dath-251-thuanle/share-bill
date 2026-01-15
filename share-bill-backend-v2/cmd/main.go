@@ -36,7 +36,13 @@ func main() {
 	tokenMaker := utils.NewJWTMaker(cfg.JWTSecret)
 	emailSender := utils.NewGmailSender(cfg.EmailSenderName, cfg.EmailSenderAddress, cfg.EmailSenderPassword)
 
-	uploadService, _ := services.NewUploadService(cfg.CloudinaryURL)
+	uploadService, err := services.NewUploadService(cfg.CloudinaryURL)
+	if err != nil {
+		log.Println("Upload service disabled:", err)
+		uploadService = nil
+	}
+
+
 
 	userService := services.NewUserService(store, tokenMaker, cfg, redisClient, emailSender, uploadService)
 	eventService := services.NewEventService(store)
@@ -63,7 +69,10 @@ func main() {
 		BodyLimit: 10 * 1024 * 1024,
 	})
 
-	app.Use(recover.New())
+	app.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+	}))
+
 	app.Use(logger.New())
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
