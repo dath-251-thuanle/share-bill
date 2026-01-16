@@ -55,40 +55,71 @@ Production URL (after deployment): https://bill.thuanle.me
 ├───src             # Backend and Frontend code are implemented
 └───uploads
 
-## Local Development
+
+
+### Deployment & Local Development
+
+This project is designed to be run locally for development and demonstration purposes.
+Both backend and frontend can be started on a local machine following the steps below.
+
+## Prerequisites
+- Docker >= 20.x
+- Docker Compose v2
+- Node.js >= 18
+- npm
+- Git
+
+## Clone repository
+
 ```bash
 git clone https://github.com/dath-251-thuanle/share-bill.git
-cd share-bill
-sops -d dev.enc.json > .env          # ask leader for sops key
+```
+
+## Setup environment variables
+
+Create `.env` file from the provided example:
+
+```bash
+cp example.env .env
+```
+
+## Run backend 
+
+```bash
+cd share-bill-backend
 docker compose up --build -d
+```
 
-Backend (API, PostgreSQL, Redis, Nginx):
+## Run frontend
 
-cd sharever-backend
-docker compose up --build -d
-
-Frontend (React + Vite)
-
+```bash
 cd sharever-frontend
 npm install
 npm run dev
+```
 
-Access:
+## Notes
 
-Frontend : http://localhost
-Backend API : http://localhost:8080
-PostgreSQL : localhost:5432
+Frontend is served using Vite dev server and requires npm run dev to be running.
+Backend services are fully containerized using Docker Compose.
+This setup is intended for development, testing, and course demonstration.
 
-Production Deployment
+## Production Deployment (Planned)
 
-Server + 2 self-hosted runners already provided
-Merge to main → GitHub Actions auto build & deploy
-Command on prod: docker compose -f docker-compose.yml up -d --build
+The system is designed to support production deployment using Docker Compose
+and GitHub Actions with self-hosted runners.
 
-API Documentation
+In a production environment:
+- Source code is merged into the `main` branch
+- GitHub Actions automatically builds Docker images
+- Containers are deployed using Docker Compose
+
+```bash
+docker compose -f docker-compose.yml up -d --build
+```
+
+## API Documentation
 
 OpenAPI spec: /docs/api-spec.yaml
 Swagger UI: https://bill.thuanle.me/api/docs
 
-## Commit convention
-feat:  fix:  ui:  test:  docs:  refactor:  chore:
