@@ -39,10 +39,13 @@ ShareBill allows a group of friends to easily record expenses during a trip, aut
 | Deployment  | Docker Compose + GitHub Actions (self-hosted runners)       |
 
 ## Project Structure
-├───share-bill-backend-v2 # Backend code is implemented
-├───sharever-frontend     # Frontend code is implemented            
-├───DATH__Final.pdf       # Report of the project
-└───README.md
+```
+share-bill/
+├── share-bill-backend-v2/    # Backend code is implemented
+├── sharever-frontend/         # Frontend code is implemented
+├── DATH__Final.pdf           # Report of the project
+└── README.md
+```
 
 ## Local Development
 ```bash
