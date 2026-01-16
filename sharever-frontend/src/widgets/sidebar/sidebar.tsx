@@ -9,8 +9,8 @@ import { useEventStore } from "../../stores/use-event-store";
 // 1) Menu với Icon Lucide
 const navItems = [
   { to: "/app", end: true, label: "Home", icon: Home },
-  { to: "/app/activity", label: "Activity", icon: Activity },
-  { to: "/app/expenses", label: "Expenses", icon: CreditCard },
+  { to: "/app/activity", label: "Events", icon: Activity },
+  // { to: "/app/expenses", label: "Expenses", icon: CreditCard },
   { to: "/app/accounts", label: "Accounts", icon: Users },
 ];
 
@@ -133,13 +133,13 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* EVENTS */}
+        {/*EVENTS*/} 
         <div className="mt-8">
+          {/*
           <div className="flex items-center justify-between mb-4">
             <div className="text-lg font-bold text-gray-900">Your events</div>
 
             <div className="flex items-center gap-2">
-              {/* Sort toggle: Date <-> A-Z */}
               <button
                 type="button"
                 className="px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 text-gray-700 hover:bg-gray-50"
@@ -159,6 +159,7 @@ export function Sidebar() {
               </button>
             </div>
           </div>
+          */}
 
           {isLoading && (
             <div className="text-xs text-gray-400">Loading events...</div>
@@ -169,6 +170,7 @@ export function Sidebar() {
           )}
 
           {/* Scrollable list */}
+          {/*
           <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
             {sortedEvents.map((event: any) => {
               const isActiveEvent = String(event.id) === String(selectedEventId);
@@ -202,6 +204,7 @@ export function Sidebar() {
               );
             })}
           </div>
+          */}
 
           {/* Optional: click to switch sort direction (if you want) */}
           {/* 
