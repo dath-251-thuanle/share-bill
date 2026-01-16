@@ -5,8 +5,6 @@
 ## Project Overview
 ShareBill allows a group of friends to easily record expenses during a trip, automatically computes debts/surpluses for each member, and instantly generates personalized VietQR codes so everyone can settle with one scan (including refunds for those who overpaid).
 
-Production URL (after deployment): https://bill.thuanle.me
-
 ## Team N8 Members
 | Student ID | Full Name            | Role                        
 |------------|----------------------|-----------------------------|
