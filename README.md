@@ -10,13 +10,13 @@ Production URL (after deployment): https://bill.thuanle.me
 ## Team N8 Members
 | Student ID | Full Name            | Role                        
 |------------|----------------------|-----------------------------|
-| 2313624    | Trần Đỗ Cao Trí      |                             |
-| 2352708    | Đinh Cao Thiên Lộc   |                             | 
-| 2311883    | Nguyễn Thị Kim Loan  |                             |
-| 2352918    | Nguyễn Lê Đức Phú    |                             |
-| 2352770    | Trần Hà My           |                             |
-| 2153485    | Nguyễn Quang Khởi    |                             |
-| 2311987    | Nguyễn Song Minh Luân|                             |
+| 2313624    | Trần Đỗ Cao Trí      | Backend                     |
+| 2352708    | Đinh Cao Thiên Lộc   | Backend                     | 
+| 2311883    | Nguyễn Thị Kim Loan  | Backend                     |
+| 2352918    | Nguyễn Lê Đức Phú    | Frontend                    |
+| 2352770    | Trần Hà My           | Backend                     |
+| 2153485    | Nguyễn Quang Khởi    | Frontend                    |
+| 2311987    | Nguyễn Song Minh Luân| Frontend                    |
 
 ## Core Features
 1. Create Event → auto-generated URL `/event/:eventId`
@@ -34,26 +34,17 @@ Production URL (after deployment): https://bill.thuanle.me
 ## Tech Stack
 | Layer       | Technology                                                  |
 |-------------|-------------------------------------------------------------|
-| Backend     | Go 1.23 + Fiber + GORM + PostgreSQL + Redis                 |
-| Frontend    | Next.js 14 (App Router) + TypeScript + TailwindCSS +        |
-|             | TanStack Query + Zod                                        |
+| Backend     | Go 1.23 + Fiber + PostgreSQL + Redis                        |
+| Frontend    | Next.js 14 (App Router) + TypeScript + TailwindCSS          |
 | Database    | PostgreSQL 16 + Redis 7                                     |
 | QR Code     | vietqr.io API + go-qrcode                                   |
 | Deployment  | Docker Compose + GitHub Actions (self-hosted runners)       |
-| Secrets     | mozilla/sops + age encryption                               |
 
 ## Project Structure
-├───.github
-│   └───workflows
-├───docs            
-├───logs
-├───reports         # All specifications are stored in here
-│   ├───M1
-│   ├───M2
-│   └───M3
-├───scripts
-├───src             # Backend and Frontend code are implemented
-└───uploads
+├───share-bill-backend-v2 # Backend code is implemented
+├───sharever-frontend     # Frontend code is implemented            
+├───DATH__Final.pdf       # Report of the project
+└───README.md
 
 ## Local Development
 ```bash
