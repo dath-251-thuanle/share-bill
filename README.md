@@ -93,18 +93,4 @@ Frontend is served using Vite dev server and requires npm run dev to be running.
 Backend services are fully containerized using Docker Compose.
 This setup is intended for development, testing, and course demonstration.
 
-### Production Deployment 
-
-The system is designed to support production deployment using Docker Compose
-and GitHub Actions with self-hosted runners.
-
-In a production environment:
-- Source code is merged into the `main` branch
-- GitHub Actions automatically builds Docker images
-- Containers are deployed using Docker Compose
-
-### API Documentation
-
-OpenAPI spec: /docs/api-spec.yaml
-Swagger UI: https://bill.thuanle.me/api/docs
 
