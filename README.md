@@ -57,25 +57,25 @@ Production URL (after deployment): https://bill.thuanle.me
 
 
 
-### Deployment & Local Development
+## Deployment & Local Development
 
 This project is designed to be run locally for development and demonstration purposes.
 Both backend and frontend can be started on a local machine following the steps below.
 
-## Prerequisites
+### Prerequisites
 - Docker >= 20.x
 - Docker Compose v2
 - Node.js >= 18
 - npm
 - Git
 
-## Clone repository
+### Clone repository
 
 ```bash
 git clone https://github.com/dath-251-thuanle/share-bill.git
 ```
 
-## Setup environment variables
+### Setup environment variables
 
 Create `.env` file from the provided example:
 
@@ -83,14 +83,14 @@ Create `.env` file from the provided example:
 cp example.env .env
 ```
 
-## Run backend 
+### Run backend 
 
 ```bash
 cd share-bill-backend
 docker compose up --build -d
 ```
 
-## Run frontend
+### Run frontend
 
 ```bash
 cd sharever-frontend
@@ -98,13 +98,13 @@ npm install
 npm run dev
 ```
 
-## Notes
+#### Notes
 
 Frontend is served using Vite dev server and requires npm run dev to be running.
 Backend services are fully containerized using Docker Compose.
 This setup is intended for development, testing, and course demonstration.
 
-## Production Deployment (Planned)
+### Production Deployment (Planned)
 
 The system is designed to support production deployment using Docker Compose
 and GitHub Actions with self-hosted runners.
@@ -118,7 +118,7 @@ In a production environment:
 docker compose -f docker-compose.yml up -d --build
 ```
 
-## API Documentation
+### API Documentation
 
 OpenAPI spec: /docs/api-spec.yaml
 Swagger UI: https://bill.thuanle.me/api/docs
