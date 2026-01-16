@@ -15,9 +15,10 @@ jobs:
         shell: powershell
         run: |
           cd share-bill-backend-v2
-          cp example.env .env
+          if (-not (Test-Path .env)) { cp example.env .env }
 
       - name: Deploy Backend
+        shell: powershell
         run: |
           cd share-bill-backend-v2
           docker compose down
